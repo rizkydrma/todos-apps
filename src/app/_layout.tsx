@@ -1,18 +1,48 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { ThemeProvider, useAppTheme } from "@/context/ThemeContext";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+function NavigationLayout() {
+    const { isDarkMode, theme } = useAppTheme();
 
-SplashScreen.preventAutoHideAsync();
+    return (
+        <>
+            {/* Mengatur warna status bar baterai/jam di paling atas HP otomatis kontras */}
+            <StatusBar style={isDarkMode ? "light" : "dark"} />
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
-  );
+            <Stack
+                screenOptions={{
+                    headerStyle: { backgroundColor: theme.surface },
+                    headerTintColor: theme.text,
+                    headerShadowVisible: false, // Menghilangkan garis bawah header agar clean
+                    contentStyle: { backgroundColor: theme.background }, // Background dasar semua screen
+                }}
+            >
+                {/* Halaman group auth kita sembunyikan headernya */}
+                <Stack.Screen
+                    options={{ headerShown: false }}
+                    name="(auth)/login"
+                />
+                <Stack.Screen
+                    options={{ headerShown: false }}
+                    name="(auth)/register"
+                />
+
+                {/* Halaman home kita beri judul kustom di header bawaan */}
+                <Stack.Screen
+                    name="(main)/home"
+                    options={{ title: "Beranda" }}
+                />
+            </Stack>
+        </>
+    );
+}
+
+// Wrapping layout navigasi dengan ThemeProvider
+export default function RootLayout() {
+    return (
+        <ThemeProvider>
+            <NavigationLayout />
+        </ThemeProvider>
+    );
 }
