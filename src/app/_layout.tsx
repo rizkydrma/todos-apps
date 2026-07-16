@@ -11,6 +11,7 @@ function NavigationLayout() {
             <StatusBar style={isDarkMode ? "light" : "dark"} />
 
             <Stack
+                initialRouteName="(main)/home"
                 screenOptions={{
                     headerStyle: { backgroundColor: theme.surface },
                     headerTintColor: theme.text,
