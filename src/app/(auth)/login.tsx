@@ -1,8 +1,9 @@
+import CustomInputField from "@/components/CustomInputField";
 import { useAppTheme } from "@/context/ThemeContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useRef } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import {
     Keyboard,
     KeyboardAvoidingView,
@@ -87,95 +88,30 @@ export default function LoginScreen() {
 
                     {/*Form Area*/}
                     <View style={styles.formContainer}>
-                        <View>
-                            <Controller
-                                control={control}
-                                name="email"
-                                render={({
-                                    field: { onChange, value, onBlur },
-                                }) => (
-                                    <TextInput
-                                        placeholder="Email"
-                                        placeholderTextColor={theme.textMuted}
-                                        onChangeText={onChange}
-                                        value={value}
-                                        onBlur={onBlur}
-                                        keyboardType="email-address"
-                                        autoCapitalize="none"
-                                        returnKeyType="next"
-                                        onSubmitEditing={() =>
-                                            passwordInputRef.current?.focus()
-                                        }
-                                        submitBehavior="submit"
-                                        style={[
-                                            styles.input,
-                                            {
-                                                backgroundColor: theme.surface,
-                                                borderColor: theme.border,
-                                                color: theme.text,
-                                            },
-                                            errors.email && {
-                                                borderColor: theme.error,
-                                            },
-                                        ]}
-                                    />
-                                )}
-                            />
+                        <CustomInputField
+                            control={control}
+                            name="email"
+                            placeholder="Email"
+                            error={errors.email?.message}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            returnKeyType="next"
+                            onSubmitEditing={() =>
+                                passwordInputRef.current?.focus()
+                            }
+                            submitBehavior="submit"
+                        />
 
-                            {errors.email && (
-                                <Text
-                                    style={[
-                                        styles.errorText,
-                                        { color: theme.error },
-                                    ]}
-                                >
-                                    {errors?.email?.message}
-                                </Text>
-                            )}
-                        </View>
-
-                        <View>
-                            <Controller
-                                control={control}
-                                name="password"
-                                render={({
-                                    field: { onChange, value, onBlur },
-                                }) => (
-                                    <TextInput
-                                        placeholder="Password"
-                                        placeholderTextColor={theme.textMuted}
-                                        onChangeText={onChange}
-                                        value={value}
-                                        onBlur={onBlur}
-                                        secureTextEntry
-                                        returnKeyType="go"
-                                        onSubmitEditing={handleSubmit(onSubmit)}
-                                        style={[
-                                            styles.input,
-                                            {
-                                                backgroundColor: theme.surface,
-                                                borderColor: theme.border,
-                                                color: theme.text,
-                                            },
-                                            errors.email && {
-                                                borderColor: theme.error,
-                                            },
-                                        ]}
-                                    />
-                                )}
-                            />
-
-                            {errors?.password && (
-                                <Text
-                                    style={[
-                                        styles.errorText,
-                                        { color: theme.error },
-                                    ]}
-                                >
-                                    {errors?.password?.message}
-                                </Text>
-                            )}
-                        </View>
+                        <CustomInputField
+                            innerRef={passwordInputRef}
+                            control={control}
+                            name="password"
+                            placeholder="Password"
+                            error={errors.password?.message}
+                            secureTextEntry
+                            returnKeyType="go"
+                            onSubmitEditing={handleSubmit(onSubmit)}
+                        />
 
                         <TouchableOpacity
                             style={[
@@ -237,19 +173,6 @@ const styles = StyleSheet.create({
     },
     formContainer: {
         width: "100%",
-    },
-    input: {
-        borderWidth: 1,
-        padding: 14,
-        borderRadius: 8,
-        marginTop: 16,
-        fontSize: 16,
-    },
-    errorText: {
-        fontSize: 12,
-        marginTop: 4,
-        marginLeft: 4,
-        fontWeight: "500",
     },
     button: {
         padding: 16,

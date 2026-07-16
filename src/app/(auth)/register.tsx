@@ -1,19 +1,18 @@
+import CustomInputField from "@/components/CustomInputField";
 import { useAppTheme } from "@/context/ThemeContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useRef } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import {
     Keyboard,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-} from "react-native";
-import {
     KeyboardAvoidingView,
     Platform,
+    ScrollView,
+    StyleSheet,
     Text,
     TextInput,
+    TouchableOpacity,
     TouchableWithoutFeedback,
     View,
 } from "react-native";
@@ -84,155 +83,59 @@ export default function RegisterScreen() {
 
                     {/*FORM INPUT*/}
                     <View>
-                        <View>
-                            <Controller
-                                control={control}
-                                name="name"
-                                render={({
-                                    field: { value, onBlur, onChange },
-                                }) => (
-                                    <TextInput
-                                        placeholder="Nama Lengkap"
-                                        placeholderTextColor={theme.textMuted}
-                                        value={value}
-                                        onChangeText={onChange}
-                                        onBlur={onBlur}
-                                        returnKeyType="next"
-                                        onSubmitEditing={() =>
-                                            emailInputRef.current?.focus()
-                                        }
-                                        submitBehavior="submit"
-                                        style={[
-                                            styles.input,
-                                            {
-                                                backgroundColor: theme.surface,
-                                                borderColor: theme.border,
-                                                color: theme.text,
-                                            },
-                                            errors?.email && {
-                                                borderColor: theme.error,
-                                            },
-                                        ]}
-                                    />
-                                )}
-                            />
-                            {errors.name && (
-                                <Text>{errors?.name?.message}</Text>
-                            )}
-                        </View>
+                        <CustomInputField
+                            control={control}
+                            name="name"
+                            placeholder="Nama Lengkap"
+                            returnKeyType="next"
+                            autoCapitalize="none"
+                            error={errors.name?.message}
+                            submitBehavior="submit"
+                            onSubmitEditing={() =>
+                                emailInputRef.current?.focus()
+                            }
+                        />
 
-                        <View>
-                            <Controller
-                                control={control}
-                                name="email"
-                                render={({
-                                    field: { value, onBlur, onChange },
-                                }) => (
-                                    <TextInput
-                                        ref={emailInputRef}
-                                        placeholder="Email"
-                                        placeholderTextColor={theme.textMuted}
-                                        value={value}
-                                        onChangeText={onChange}
-                                        onBlur={onBlur}
-                                        autoCapitalize="none"
-                                        returnKeyType="next"
-                                        onSubmitEditing={() =>
-                                            passwordInputRef.current?.focus()
-                                        }
-                                        submitBehavior="submit"
-                                        style={[
-                                            styles.input,
-                                            {
-                                                backgroundColor: theme.surface,
-                                                borderColor: theme.border,
-                                                color: theme.text,
-                                            },
-                                            errors?.email && {
-                                                borderColor: theme.error,
-                                            },
-                                        ]}
-                                    />
-                                )}
-                            />
-                            {errors.email && (
-                                <Text>{errors?.email?.message}</Text>
-                            )}
-                        </View>
+                        <CustomInputField
+                            innerRef={emailInputRef}
+                            control={control}
+                            name="email"
+                            placeholder="Email"
+                            error={errors.email?.message}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            returnKeyType="next"
+                            submitBehavior="submit"
+                            onSubmitEditing={() =>
+                                passwordInputRef.current?.focus()
+                            }
+                        />
 
-                        <View>
-                            <Controller
-                                control={control}
-                                name="password"
-                                render={({
-                                    field: { value, onBlur, onChange },
-                                }) => (
-                                    <TextInput
-                                        ref={passwordInputRef}
-                                        placeholder="Password"
-                                        placeholderTextColor={theme.textMuted}
-                                        value={value}
-                                        onChangeText={onChange}
-                                        onBlur={onBlur}
-                                        returnKeyType="next"
-                                        onSubmitEditing={() =>
-                                            confirmPasswordInputRef.current?.focus()
-                                        }
-                                        submitBehavior="submit"
-                                        style={[
-                                            styles.input,
-                                            {
-                                                backgroundColor: theme.surface,
-                                                borderColor: theme.border,
-                                                color: theme.text,
-                                            },
-                                            errors?.email && {
-                                                borderColor: theme.error,
-                                            },
-                                        ]}
-                                    />
-                                )}
-                            />
-                            {errors.password && (
-                                <Text>{errors?.password?.message}</Text>
-                            )}
-                        </View>
+                        <CustomInputField
+                            innerRef={passwordInputRef}
+                            control={control}
+                            name="password"
+                            placeholder="Password"
+                            error={errors.password?.message}
+                            secureTextEntry
+                            returnKeyType="go"
+                            onSubmitEditing={() =>
+                                confirmPasswordInputRef.current?.focus()
+                            }
+                        />
 
-                        <View>
-                            <Controller
-                                control={control}
-                                name="confirmPassword"
-                                render={({
-                                    field: { onChange, onBlur, value },
-                                }) => (
-                                    <TextInput
-                                        ref={confirmPasswordInputRef}
-                                        placeholder="Konfirmasi Password"
-                                        placeholderTextColor={theme.textMuted}
-                                        secureTextEntry
-                                        value={value}
-                                        onChangeText={onChange}
-                                        onBlur={onBlur}
-                                        returnKeyType="go"
-                                        onSubmitEditing={handleSubmit(onSubmit)}
-                                        style={[
-                                            styles.input,
-                                            {
-                                                backgroundColor: theme.surface,
-                                                borderColor: theme.border,
-                                                color: theme.text,
-                                            },
-                                            errors?.email && {
-                                                borderColor: theme.error,
-                                            },
-                                        ]}
-                                    />
-                                )}
-                            />
-                            {errors?.confirmPassword && (
-                                <Text>{errors?.confirmPassword?.message}</Text>
-                            )}
-                        </View>
+                        <CustomInputField
+                            innerRef={confirmPasswordInputRef}
+                            control={control}
+                            name="password"
+                            placeholder="Password"
+                            error={errors.password?.message}
+                            secureTextEntry
+                            returnKeyType="go"
+                            onSubmitEditing={() =>
+                                confirmPasswordInputRef.current?.focus()
+                            }
+                        />
 
                         {/* REGISTER */}
                         <TouchableOpacity
@@ -283,14 +186,6 @@ const styles = StyleSheet.create({
     logoText: { fontSize: 32, fontWeight: "bold" },
     subtitleText: { fontSize: 14, marginTop: 8, textAlign: "center" },
     formContainer: { width: "100%" },
-    input: {
-        borderWidth: 1,
-        padding: 14,
-        borderRadius: 8,
-        marginTop: 16,
-        fontSize: 16,
-    },
-    errorText: { fontSize: 12, marginTop: 4, marginLeft: 4, fontWeight: "500" },
     button: {
         padding: 16,
         borderRadius: 8,
