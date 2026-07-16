@@ -1,41 +1,37 @@
-import { DarkTheme, LightTheme, ThemeType } from "@/constants/themes";
-import { createContext, useContext, useEffect, useState } from "react";
-import { useColorScheme } from "react-native";
+import { DarkTheme, LightTheme, ThemeType } from '@/constants/themes';
+import { createContext, useContext, useState } from 'react';
+import { useColorScheme } from 'react-native';
 
 type ThemeContextType = {
-    isDarkMode: boolean;
-    theme: ThemeType;
-    toggleTheme: () => void;
+  isDarkMode: boolean;
+  theme: ThemeType;
+  toggleTheme: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 // THEME PROVIDER
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const systemScheme = useColorScheme();
-    const [isDarkMode, setIsDarkMode] = useState(systemScheme === "dark");
+  const systemScheme = useColorScheme();
+  const [isDarkMode, setIsDarkMode] = useState(systemScheme === 'dark');
 
-    useEffect(() => {
-        setIsDarkMode(systemScheme === "dark");
-    }, [systemScheme]);
+  const toggleTheme = () => setIsDarkMode((prev) => !prev);
+  const theme = isDarkMode ? DarkTheme : LightTheme;
 
-    const toggleTheme = () => setIsDarkMode((prev) => !prev);
-    const theme = isDarkMode ? DarkTheme : LightTheme;
-
-    return (
-        <ThemeContext.Provider value={{ isDarkMode, theme, toggleTheme }}>
-            {children}
-        </ThemeContext.Provider>
-    );
+  return (
+    <ThemeContext.Provider value={{ isDarkMode, theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 // CUSTOM HOOKS
 export function useAppTheme() {
-    const context = useContext(ThemeContext);
+  const context = useContext(ThemeContext);
 
-    if (!context) {
-        throw new Error("useAppTheme harus digunakan di dalam ThemeProvider");
-    }
+  if (!context) {
+    throw new Error('useAppTheme harus digunakan di dalam ThemeProvider');
+  }
 
-    return context;
+  return context;
 }
