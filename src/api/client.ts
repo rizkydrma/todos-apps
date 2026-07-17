@@ -1,3 +1,9 @@
+import {
+  clearSession,
+  getAccessToken,
+  getRefreshToken,
+  persistSession,
+} from '@/lib/auth-session';
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -12,64 +18,85 @@ export const apiClient = axios.create({
   },
 });
 
-// REQUEST INTERCEPTOR
+const AUTH_NO_REFRESH_PATHS = [
+  '/auth/refresh',
+  '/auth/login',
+  '/auth/register',
+  '/auth/google',
+  '/auth/logout',
+];
+
+function shouldSkipRefresh(url?: string): boolean {
+  if (!url) return false;
+  return AUTH_NO_REFRESH_PATHS.some((p) => url.includes(p));
+}
+
 apiClient.interceptors.request.use(
   (config: CustomAxiosRequestConfig) => {
-    // Ambil token dari storage (nanti kita pakai MMKV atau SecureStore)
-    const token = getTokenFromStorage(); // fungsi yang akan kamu buat
-
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// RESPONSE INTERCEPTOR
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const currentRefresh = getRefreshToken();
+  if (!currentRefresh) {
+    await clearSession();
+    return null;
+  }
+
+  try {
+    // Dynamic import avoids circular init (auth.api imports apiClient).
+    const { authApi } = await import('@/features/auth/api/auth.api');
+    const session = await authApi.refresh(currentRefresh);
+    await persistSession(session);
+    return session.accessToken;
+  } catch {
+    await clearSession();
+    return null;
+  }
+}
+
+function getOrCreateRefreshPromise(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 apiClient.interceptors.response.use(
-  (response) => response, // Langsung return kalau sukses
-
+  (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as CustomAxiosRequestConfig;
+    const originalRequest = error.config as
+      CustomAxiosRequestConfig | undefined;
 
-    // Handle 401 Unauthorized + refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        // TODO: Panggil refresh token logic di sini
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return apiClient(originalRequest); // Ulang request yang gagal
-        }
-      } catch (refreshError) {
-        console.log(refreshError);
-        // Kalau refresh gagal → logout user
-        await logoutUser();
-      }
+    if (
+      !originalRequest ||
+      error.response?.status !== 401 ||
+      originalRequest._retry ||
+      shouldSkipRefresh(originalRequest.url)
+    ) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    originalRequest._retry = true;
+
+    const newToken = await getOrCreateRefreshPromise();
+    if (!newToken) {
+      return Promise.reject(error);
+    }
+
+    originalRequest.headers.Authorization = `Bearer ${newToken}`;
+    return apiClient(originalRequest);
   }
 );
-
-// Helper functions (buat di file terpisah nanti)
-const getTokenFromStorage = (): string | null => {
-  // nanti pakai MMKV atau expo-secure-store
-  return null; // sementara
-};
-
-const refreshAccessToken = async (): Promise<string | null> => {
-  // Implement refresh logic nanti
-  return null;
-};
-
-const logoutUser = async () => {
-  // Clear storage + redirect ke login
-  console.log('User logged out');
-};
 
 export default apiClient;
