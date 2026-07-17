@@ -31,17 +31,21 @@ User tap "Sign in with Google"
         ↓
 GoogleSignin.hasPlayServices()
         ↓
-GoogleSignin.signIn()  →  idToken (native sheet)
+GoogleSignin.signIn()  →  Google idToken (iss: accounts.google.com)
         ↓
-POST /auth/google { idToken }  →  AuthSession (access + refresh + user)
+Firebase signInWithCredential  →  user.getIdToken()
+  (iss: https://securetoken.google.com/todos-c1b87)
+        ↓
+POST /auth/google { idToken: <Firebase ID token> }
+  →  AuthSession (access + refresh + user)
         ↓
 commitSession(session)  →  SecureStore + AuthContext  →  home
 ```
 
-> **Penting (redesign Juli 2026):** App **tidak** lagi memanggil Firebase `signInWithCredential` di client login path.  
-> Native setup (webClientId type 3, SHA-1, Play Services, prebuild) **tetap wajib** supaya Google mengembalikan `idToken`.  
-> Session JWT, refresh, logout, boot hydrate: lihat **[`docs/auth-flow.md`](./auth-flow.md)**.  
-> Scalar Auth API: https://todo-service.rizky-darmarazak.workers.dev/docs#tag/auth
+> **Penting:** Backend memverifikasi **Firebase ID token**, bukan Google OAuth idToken murni.  
+> Native setup (webClientId type 3, SHA-1, Play Services, prebuild) **tetap wajib**.  
+> Session JWT, refresh, logout, boot: **[`docs/auth-flow.md`](./auth-flow.md)**.  
+> Scalar: https://todo-service.rizky-darmarazak.workers.dev/docs#tag/auth
 
 `GoogleSignin.configure({ webClientId })` harus memakai **OAuth Web client** (`client_type: 3`), **bukan** Android client (`client_type: 1`).
 
@@ -259,9 +263,11 @@ npx expo run:android
 - Pastikan `GoogleSignin.configure({ webClientId })` pakai Web client ID
 - Google Sign-In method / OAuth client setup di Firebase Console masih relevan untuk native sheet
 
-### Backend `/auth/google` gagal tapi Google sheet OK
+### Backend `/auth/google` 401 `Invalid token signature`
 
-- App sudah kirim Google `idToken` mentah (bukan Firebase ID token)
+- Hampir selalu: FE mengirim Google OAuth idToken (`iss: accounts.google.com`)  
+  → harus exchange Firebase dulu, kirim `user.getIdToken()` (`iss: securetoken.google.com/todos-c1b87`)
+- Decode payload di [jwt.io](https://jwt.io) untuk cek `iss`
 - Session & refresh: [`docs/auth-flow.md`](./auth-flow.md)
 
 ### Play Services not available

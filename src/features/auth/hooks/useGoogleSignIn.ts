@@ -2,6 +2,7 @@ import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/features/auth/api/auth.api';
 import type { AuthSession } from '@/features/auth/types';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { auth } from '@/lib/firebase';
 import {
   GoogleSignin,
   isErrorWithCode,
@@ -10,6 +11,7 @@ import {
 } from '@react-native-google-signin/google-signin';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { Alert } from 'react-native';
 
 GoogleSignin.configure({
@@ -17,6 +19,13 @@ GoogleSignin.configure({
     '244150983370-bdcj1aq5b9el7s5fi6p8fc6egc17hf1l.apps.googleusercontent.com',
 });
 
+/**
+ * Google native sheet → Firebase credential exchange → backend session.
+ *
+ * Backend `/auth/google` expects a **Firebase ID token**
+ * (`iss: https://securetoken.google.com/todos-c1b87`), not the raw Google
+ * OAuth idToken (`iss: https://accounts.google.com`).
+ */
 export const useGoogleSignIn = () => {
   const router = useRouter();
   const { commitSession } = useAuth();
@@ -33,7 +42,12 @@ export const useGoogleSignIn = () => {
         throw new Error('Google Sign-In gagal: idToken tidak tersedia');
       }
 
-      return authApi.google(response.data.idToken);
+      // Exchange Google idToken → Firebase user, then send Firebase JWT to API.
+      const credential = GoogleAuthProvider.credential(response.data.idToken);
+      const { user } = await signInWithCredential(auth, credential);
+      const firebaseIdToken = await user.getIdToken();
+
+      return authApi.google(firebaseIdToken);
     },
 
     onSuccess: async (session) => {

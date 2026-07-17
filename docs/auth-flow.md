@@ -8,22 +8,25 @@ Dokumen ini fokus ke **session app**, kontrak Auth API, file map, dan cara menam
 **OpenAPI / Scalar (tag auth):**  
 https://todo-service.rizky-darmarazak.workers.dev/docs#tag/auth
 
-Terakhir diselaraskan dengan kode: **Juli 2026** (JWT session API redesign).
+Terakhir diselaraskan dengan kode: **Juli 2026** (JWT session + Firebase exchange Google + ops backend).
 
 ---
 
 ## Ringkasan 30 detik
 
-| Pertanyaan                                  | Jawaban di project ini                                               |
-| ------------------------------------------- | -------------------------------------------------------------------- |
-| Siapa yang “membuktikan” identitas Google?  | Native Google Sign-In → **Google `idToken`** (bukan Firebase client) |
-| Siapa yang membuat / mengembalikan session? | Backend: `POST /auth/google`, `/auth/login`, `/auth/register`        |
-| Token untuk API selanjutnya?                | Backend **`accessToken` JWT** (Bearer) + **`refreshToken`**          |
-| Di mana session disimpan?                   | Memory (`auth-session`) + SecureStore keys di bawah                  |
-| Setelah sukses ke mana?                     | `commitSession` → `router.replace('/(main)/home')`                   |
-| Restart app?                                | Hydrate SecureStore → `POST /auth/refresh` jika ada refreshToken     |
+| Pertanyaan                                  | Jawaban di project ini                                             |
+| ------------------------------------------- | ------------------------------------------------------------------ |
+| Siapa yang “membuktikan” identitas Google?  | Native Google → **Firebase** exchange → **Firebase ID token**      |
+| Siapa yang membuat / mengembalikan session? | Backend: `POST /auth/google`, `/auth/login`, `/auth/register`      |
+| Body `/auth/google`                         | `{ idToken }` = **Firebase** JWT (`iss: securetoken.google.com/…`) |
+| Token untuk API selanjutnya?                | Backend **`accessToken` JWT** (Bearer) + **`refreshToken`**        |
+| Di mana session disimpan?                   | Memory (`auth-session`) + SecureStore keys di bawah                |
+| Setelah sukses ke mana?                     | `commitSession` → `router.replace('/(main)/home')`                 |
+| Restart app?                                | Hydrate SecureStore → `POST /auth/refresh` jika ada refreshToken   |
+| Firebase di app untuk apa?                  | **Wajib** di path Google (exchange token). Bukan session API.      |
+| Email/password pakai Firebase?              | **Tidak** — hash di D1, session JWT dari backend                   |
 
-**Legacy (sudah tidak dipakai di login path):** Firebase `signInWithCredential` + `POST /auth/login` dengan Firebase ID token. Package `firebase` / `lib/firebase.ts` boleh residual; hooks auth **tidak** import Firebase.
+**Penting:** Jangan kirim Google OAuth idToken murni (`iss: accounts.google.com`) ke `/auth/google` — backend memverifikasi **Firebase ID token** (`iss: https://securetoken.google.com/todos-c1b87`). Cek di [jwt.io](https://jwt.io) kalau 401 `Invalid token signature`.
 
 ---
 
@@ -40,25 +43,32 @@ Terakhir diselaraskan dengan kode: **Juli 2026** (JWT session API redesign).
 ┌─────────────────────────────────────────────────────────────────┐
 │  1. Google (native)                                             │
 │     GoogleSignin.hasPlayServices()                              │
-│     GoogleSignin.signIn()  →  Google idToken                    │
+│     GoogleSignin.signIn()  →  Google idToken (accounts.google)  │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  2. Backend                                                     │
+│  2. Firebase exchange (wajib)                                   │
+│     GoogleAuthProvider.credential(googleIdToken)                │
+│     signInWithCredential(auth, credential)                      │
+│     user.getIdToken()  →  Firebase ID token (securetoken.google)│
+└────────────────────────────┬────────────────────────────────────┘
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  3. Backend                                                     │
 │     POST {baseURL}/auth/google                                  │
-│     Body: { "idToken": "<Google idToken>" }                     │
+│     Body: { "idToken": "<Firebase ID token>" }                  │
 │     Response: AuthSessionResponse → AuthSession                 │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  3. Commit session                                              │
+│  4. Commit session                                              │
 │     commitSession(session)                                      │
 │       → persistSession (memory + SecureStore)                   │
 │       → status = authenticated, user = session.user             │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  4. Navigasi                                                    │
+│  5. Navigasi                                                    │
 │     router.replace('/(main)/home')                              │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -127,7 +137,7 @@ src/
 │   ├── auth-session.ts          # memory + SecureStore; getters; persist/clear
 │   ├── auth-token.ts            # re-export thin dari auth-session (compat)
 │   ├── api-error.ts             # getApiErrorMessage dari axios/body
-│   └── firebase.ts              # residual; TIDAK dipakai di login path
+│   └── firebase.ts              # Firebase Auth init — WAJIB untuk Google exchange
 │
 ├── api/
 │   └── client.ts                # axios + Bearer + 401 single-flight refresh
@@ -136,7 +146,7 @@ src/
     ├── types.ts                 # PublicUser, AuthSession, bodies, envelopes
     ├── api/auth.api.ts          # register, login, google, refresh, logout, me
     └── hooks/
-        ├── useGoogleSignIn.ts   # Google idToken → authApi.google
+        ├── useGoogleSignIn.ts   # Google → Firebase → authApi.google(firebaseIdToken)
         ├── useEmailLogin.ts     # authApi.login
         └── useRegister.ts       # authApi.register
 ```
@@ -149,6 +159,7 @@ src/
 | Hooks auth        | Layout screen / styling form                                        |
 | Screens           | Logika token & HTTP (cukup panggil hook + `commitSession` via hook) |
 | `api/client.ts`   | Business login; hanya attach Bearer + refresh on 401                |
+| `lib/firebase.ts` | Session storage / Bearer API (hanya identity Google → Firebase JWT) |
 
 ---
 
@@ -163,7 +174,7 @@ Scalar: https://todo-service.rizky-darmarazak.workers.dev/docs#tag/auth
 
 | Method | Path             | Body                        | Response data      |
 | ------ | ---------------- | --------------------------- | ------------------ |
-| `POST` | `/auth/google`   | `{ idToken }`               | `AuthSession`      |
+| `POST` | `/auth/google`   | `{ idToken }` Firebase JWT  | `AuthSession`      |
 | `POST` | `/auth/login`    | `{ email, password }`       | `AuthSession`      |
 | `POST` | `/auth/register` | `{ name, email, password }` | `AuthSession`      |
 | `POST` | `/auth/refresh`  | `{ refreshToken }`          | `AuthSession`      |
@@ -216,10 +227,9 @@ UI memakai `getApiErrorMessage(error)` (`lib/api-error.ts`) → `Alert.alert`.
 
 ### Yang **tidak** lagi dikirim ke backend (login path)
 
-- Firebase ID token sebagai `POST /auth/login { token }`
-- Google `idToken` lewat Firebase `signInWithCredential` dulu
+- Firebase ID token sebagai `POST /auth/login { token }` (endpoint lama)
 
-Google: **langsung** `POST /auth/google { idToken }`.
+Google (sekarang): native Google → Firebase exchange → `POST /auth/google { idToken: firebaseIdToken }`.
 
 ---
 
@@ -301,12 +311,16 @@ Response interceptor (status 401):
   skip jika _retry sudah true
   else:
     single-flight getOrCreateRefreshPromise()
-      → authApi.refresh(getRefreshToken())
-      → persistSession
+      → apiClient.post('/auth/refresh', { refreshToken })   // LANGSUNG di client.ts
+      →   (bukan authApi.refresh — hindari circular import auth.api ↔ client)
+      → persistSession(data.data)
       → return new accessToken
     jika sukses: set header + retry original request sekali
     jika gagal: clearSession → reject (UI jatuh ke unauthenticated / login)
 ```
+
+**Kenapa bukan `authApi.refresh` di interceptor?**  
+`auth.api` mengimpor `apiClient`. Kalau `client` mengimpor `authApi` lagi → circular module. Boot / hook lain **boleh** pakai `authApi.refresh` (mis. `AuthContext` cold start).
 
 **Single-flight:** concurrent 401 share **satu** `refreshPromise` supaya tidak spam `/auth/refresh`.
 
@@ -354,7 +368,8 @@ Ikuti pola yang sama; **jangan** copy orkestrasi ke screen.
 
 Contoh: `features/auth/hooks/useAppleSignIn.ts` — mirror `useEmailLogin` / `useGoogleSignIn`.
 
-**Jangan** masukkan Firebase client di path login kecuali backend di kemudian hari mensyaratkan ulang.
+**Wajib** Firebase client di path Google login (exchange token) — lihat `lib/firebase.ts` + `useGoogleSignIn`.  
+Email/password **tidak** pakai Firebase.
 
 ---
 
@@ -369,33 +384,66 @@ Contoh: `features/auth/hooks/useAppleSignIn.ts` — mirror `useEmailLogin` / `us
 
 ## Checklist “login terasa rusak” (debug cepat)
 
+### App / client
+
 1. **Unmatched route di start** → cek `app/index.tsx`; path `/` harus resolve.
 2. **Stuck spinner** → boot hang? cek network ke `/auth/refresh` + SecureStore keys.
 3. **Google DEVELOPER_ERROR** → `docs/google-sign-in.md` (SHA-1, webClientId type 3).
 4. **idToken null** → `GoogleSignin.configure({ webClientId })` salah client.
-5. **Backend 4xx di /auth/google** → idToken Google (bukan Firebase); audience / backend verifier.
+5. **Backend 4xx di /auth/google** → pastikan body adalah **Firebase** ID token (`iss: securetoken.google.com/todos-c1b87`), bukan Google murni (`accounts.google.com`). Decode di [jwt.io](https://jwt.io).
 6. **Email 401** → password / user belum register.
 7. **Response shape mismatch** → log axios `data`; samakan `auth.api.ts` + `types.ts` (harus ada `data.user` + tokens).
 8. **Login sukses tapi request lain 401** → `commitSession` / `persistSession` terpanggil? `getAccessToken()` non-null? refresh single-flight gagal?
-9. **Setelah restart logout** → cek SecureStore keys; refresh endpoint; refreshToken expired?
+9. **Setelah restart logout** → cek SecureStore keys; refresh endpoint; refreshToken expired / revoked di D1?
 10. **Hook error `useAuth`** → komponen di luar `AuthProvider` (`_layout.tsx`).
+
+### Backend / ops (sering 500 di production)
+
+Cek log: `cd service && npx wrangler tail --search 'http_error'`  
+Docs logger: `service/docs/logger.md`
+
+| Gejala di log / response               | Penyebab tipikal                           | Fix                                                   |
+| -------------------------------------- | ------------------------------------------ | ----------------------------------------------------- |
+| `HMAC key length (0)` / sign JWT gagal | `JWT_SECRET` kosong di Worker              | `npx wrangler secret put JWT_SECRET` (min 32 chars)   |
+| `no such table: refresh_tokens`        | Migration auth belum di D1 remote          | `npm run db:migrate:auth:prod` di folder `service/`   |
+| `Invalid token signature` (401)        | Bukan Firebase ID token / project ID salah | Kirim Firebase JWT; `FIREBASE_PROJECT_ID=todos-c1b87` |
+| `INTERNAL_ERROR` + stack D1/jose       | Bug / misconfig infra                      | Baca `message` + `stack` di log terstruktur           |
+
+Local (`.dev.vars`) **tidak** otomatis ke production — secret & migration remote terpisah.
+
+---
+
+## Backend (ringkas — side service)
+
+App ini hit production Worker: `https://todo-service.rizky-darmarazak.workers.dev`.
+
+| Layer                           | Peran                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `POST /auth/google`             | Verify Firebase JWT (JWKS) → find/create user D1 → issue access + refresh JWT |
+| `POST /auth/login` / `register` | Password PBKDF2 di D1 → issue JWT pair                                        |
+| `POST /auth/refresh`            | Verify refresh JWT + row `refresh_tokens` → rotate                            |
+| Middleware protected routes     | Verify **access JWT** service (`JWT_SECRET`), load user by `sub`              |
+
+Env penting (Worker): `JWT_SECRET` (secret), `FIREBASE_PROJECT_ID` (var), D1 binding `DB` + tabel `users` / `refresh_tokens`.
 
 ---
 
 ## Roadmap auth (urutan disarankan)
 
-| #   | Item                                                             | Status |
-| --- | ---------------------------------------------------------------- | ------ |
-| 1   | Google idToken → `POST /auth/google` (no Firebase client login)  | ✅     |
-| 2   | Email login + register → JWT session                             | ✅     |
-| 3   | AuthContext + `commitSession` / `signOut` + boot refresh         | ✅     |
-| 4   | SecureStore persist + hydrate                                    | ✅     |
-| 5   | 401 single-flight refresh di `apiClient`                         | ✅     |
-| 6   | Root gate + protect `(main)` layout                              | ✅     |
-| 7   | Error UX (Alert) di hooks                                        | ✅     |
-| 8   | Proactive refresh sebelum `expiresIn`                            | ⬜     |
-| 9   | Role-based UI (`user.role`)                                      | ⬜     |
-| 10  | Hapus residual `firebase` package / `lib/firebase.ts` (opsional) | ⬜     |
+| #   | Item                                                                           | Status                                                                      |
+| --- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| 1   | Google → Firebase exchange → `POST /auth/google` (Firebase JWT)                | ✅                                                                          |
+| 2   | Email login + register → JWT session                                           | ✅                                                                          |
+| 3   | AuthContext + `commitSession` / `signOut` + boot refresh                       | ✅                                                                          |
+| 4   | SecureStore persist + hydrate                                                  | ✅                                                                          |
+| 5   | 401 single-flight refresh di `apiClient`                                       | ✅                                                                          |
+| 6   | Root gate + protect `(main)` layout                                            | ✅                                                                          |
+| 7   | Error UX (Alert) di hooks                                                      | ✅                                                                          |
+| 8   | Proactive refresh sebelum `expiresIn`                                          | ⬜                                                                          |
+| 9   | Role-based UI (`user.role`)                                                    | ⬜                                                                          |
+| 10  | Alternatif Google tanpa Firebase client (backend verify Google token langsung) | ⬜ opsional; **jangan hapus** `firebase` selama path exchange masih dipakai |
+
+> **Bukan residual:** `lib/firebase.ts` + package `firebase` **masih dipakai** di `useGoogleSignIn`. Hapus hanya jika backend diganti menerima Google OAuth idToken murni.
 
 ---
 
@@ -408,22 +456,25 @@ Contoh: `features/auth/hooks/useAppleSignIn.ts` — mirror `useEmailLogin` / `us
 | Hook register               | `src/features/auth/hooks/useRegister.ts`                        |
 | Session React               | `src/context/AuthContext.tsx` → `useAuth()`                     |
 | Session storage             | `src/lib/auth-session.ts`                                       |
+| Firebase init (Google path) | `src/lib/firebase.ts`                                           |
 | HTTP auth                   | `src/features/auth/api/auth.api.ts`                             |
 | Types                       | `src/features/auth/types.ts`                                    |
 | Axios + 401 refresh         | `src/api/client.ts`                                             |
 | API errors                  | `src/lib/api-error.ts`                                          |
 | Scalar Auth API             | https://todo-service.rizky-darmarazak.workers.dev/docs#tag/auth |
 | Setup native Google         | `docs/google-sign-in.md`                                        |
+| HTTP error logger (service) | `../service/docs/logger.md`                                     |
 | Run Android (Google native) | `npx expo run:android` (bukan Expo Go)                          |
 
 ---
 
 ## Prinsip desain (ingat ini)
 
-1. **Identity provider ≠ session app.** Google hanya memberi `idToken`; session = backend JWT (`access` + `refresh` + `user`).
+1. **Identity provider ≠ session app.** Google (+ Firebase exchange) hanya memberi **identity** JWT; session app = backend JWT (`access` + `refresh` + `user`).
 2. **Satu model session** untuk Google, email login, dan register: `AuthSession` + `commitSession`.
 3. **API layer tipis; hook orkestrasi; context state; screen navigasi/UX.**
 4. **`replace` setelah auth** supaya back stack benar.
 5. **Interceptor baca token non-React** — jangan pindahkan bearer hanya ke Context tanpa `auth-session`.
-6. **401 refresh single-flight** — jangan N refresh paralel.
+6. **401 refresh single-flight** di `client.ts` (langsung `apiClient.post`, bukan lewat `authApi`) — jangan N refresh paralel.
 7. **Boot tunggu `status !== 'bootstrapping'`** supaya tidak flash login sebelum hydrate.
+8. **Firebase client = identity Google saja**, bukan Bearer ke API dan bukan storage session.
