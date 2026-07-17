@@ -2,7 +2,14 @@
 
 How we style the Just Todos Expo app. Read this before adding UI.
 
-**Design spec:** [`docs/superpowers/specs/2026-07-17-enterprise-styling-design.md`](./superpowers/specs/2026-07-17-enterprise-styling-design.md)
+**Visual brand:** X-like — pure black/white canvas, accent `#1D9BF0`, flat chrome, pill primary CTAs.
+
+**Default mode:** Dark-first (`ThemeProvider` initializes `isDarkMode = true`). Light mode remains available via `ThemeToggle`.
+
+**Design specs:**
+
+- Enterprise foundation: [`docs/superpowers/specs/2026-07-17-enterprise-styling-design.md`](./superpowers/specs/2026-07-17-enterprise-styling-design.md)
+- X-like redesign: [`docs/superpowers/specs/2026-07-17-x-like-design.md`](./superpowers/specs/2026-07-17-x-like-design.md)
 
 ---
 
@@ -25,7 +32,7 @@ Screen  →  UI primitives  →  useAppTheme / useThemedStyles  →  src/theme/*
 
 ### Do
 
-1. **Semantic colors only** in screens: `theme.colors.primary`, never `#007AFF`.
+1. **Semantic colors only** in screens: `theme.colors.primary`, never `#1D9BF0` or other hex.
 2. **Spacing / radius / font** from `theme.spacing`, `theme.radius`, `theme.fontSize`.
 3. Prefer **UI primitives** (`Button`, `AppText`, `TextField`, `Screen`, …) before inventing controls.
 4. Use **`useThemedStyles`** for screen-specific layout that depends on the theme scale.
