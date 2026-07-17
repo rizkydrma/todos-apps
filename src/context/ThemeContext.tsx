@@ -1,6 +1,5 @@
 import { darkTheme, lightTheme, type Theme } from '@/theme';
 import { createContext, useContext, useMemo, useState } from 'react';
-import { useColorScheme } from 'react-native';
 
 type ThemeContextType = {
   isDarkMode: boolean;
@@ -11,8 +10,7 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
-  const [isDarkMode, setIsDarkMode] = useState(systemScheme === 'dark');
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   const value = useMemo<ThemeContextType>(
     () => ({
