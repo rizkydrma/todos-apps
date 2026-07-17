@@ -12,9 +12,10 @@ function NavigationLayout() {
 
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: theme.colors.surface },
+          headerStyle: { backgroundColor: theme.colors.background },
           headerTintColor: theme.colors.text,
           headerShadowVisible: false,
+          headerTitleStyle: { fontWeight: '700' },
           contentStyle: { backgroundColor: theme.colors.background },
         }}
       >
