@@ -1,3 +1,4 @@
+import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { Stack } from 'expo-router';
@@ -36,7 +37,9 @@ export default function RootLayout() {
     <QueryProvider>
       <SafeAreaProvider>
         <ThemeProvider>
-          <NavigationLayout />
+          <AuthProvider>
+            <NavigationLayout />
+          </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </QueryProvider>
