@@ -1,20 +1,17 @@
-import CustomInputField from '@/components/CustomInputField';
-import { useAppTheme } from '@/context/ThemeContext';
+import {
+  Button,
+  Screen,
+  TextButton,
+  TextField,
+  ThemeToggle,
+} from '@/components/ui';
+import { AppText } from '@/components/ui/AppText';
+import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import * as z from 'zod';
 
 const loginSchema = z.object({
@@ -25,8 +22,6 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
-  const { theme, toggleTheme, isDarkMode } = useAppTheme();
-
   const router = useRouter();
   const passwordInputRef = useRef<TextInput>(null);
 
@@ -48,132 +43,84 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.innerContainer}>
-          {/* Switcher Theme */}
-          <TouchableOpacity onPress={toggleTheme} style={styles.themeButton}>
-            <Text style={[styles.themeButtonText, { color: theme.primary }]}>
-              {isDarkMode ? 'Light' : 'Dark'}
-            </Text>
-          </TouchableOpacity>
-
-          {/*Header Logo*/}
-          <View style={styles.logoContainer}>
-            <Text style={[styles.logoText, { color: theme.text }]}>
-              Just Todos
-            </Text>
-            <Text style={[styles.subtitleText, { color: theme.textMuted }]}>
-              Silahkan masuk ke akun Anda
-            </Text>
-          </View>
-
-          {/*Form Area*/}
-          <View style={styles.formContainer}>
-            <CustomInputField
-              control={control}
-              name="email"
-              placeholder="Email"
-              error={errors.email?.message}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordInputRef.current?.focus()}
-              submitBehavior="submit"
-            />
-
-            <CustomInputField
-              innerRef={passwordInputRef}
-              control={control}
-              name="password"
-              placeholder="Password"
-              error={errors.password?.message}
-              secureTextEntry
-              returnKeyType="go"
-              onSubmitEditing={handleSubmit(onSubmit)}
-            />
-
-            <TouchableOpacity
-              style={[
-                styles.button,
-                { backgroundColor: theme.primary },
-                !isValid && {
-                  backgroundColor: theme.primaryDisabled,
-                },
-              ]}
-              onPress={handleSubmit(onSubmit)}
-              disabled={!isValid}
-            >
-              <Text style={styles.buttonText}>Sign In</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() => router.push(`/(auth)/register`)}
-            >
-              <Text style={[styles.linkText, { color: theme.primary }]}>
-                Belum punya akun? Daftar di sini
-              </Text>
-            </TouchableOpacity>
-          </View>
+    <Screen keyboard dismissKeyboardOnPress safe={{ top: true }}>
+      <View style={styles.content}>
+        <View style={styles.themeToggle}>
+          <ThemeToggle variant="text" />
         </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+
+        <View style={styles.logoContainer}>
+          <AppText variant="title">Just Todos</AppText>
+          <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
+            Silahkan masuk ke akun Anda
+          </AppText>
+        </View>
+
+        <View style={styles.form}>
+          <TextField
+            control={control}
+            name="email"
+            placeholder="Email"
+            error={errors.email?.message}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordInputRef.current?.focus()}
+            submitBehavior="submit"
+          />
+
+          <TextField
+            innerRef={passwordInputRef}
+            control={control}
+            name="password"
+            placeholder="Password"
+            error={errors.password?.message}
+            secureTextEntry
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit(onSubmit)}
+          />
+
+          <Button
+            title="Sign In"
+            onPress={handleSubmit(onSubmit)}
+            disabled={!isValid}
+            style={styles.submit}
+          />
+
+          <TextButton
+            title="Belum punya akun? Daftar di sini"
+            onPress={() => router.push('/(auth)/register')}
+          />
+        </View>
+      </View>
+    </Screen>
   );
 }
 
+/** Static layout — no light/dark dependency; spacing from design tokens */
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  innerContainer: {
+  content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: spacing.lg,
   },
-  themeButton: { position: 'absolute', top: 60, right: 24, padding: 8 },
-  themeButtonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
+  themeToggle: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.lg,
+    zIndex: 1,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: spacing.xxl,
   },
-  logoText: {
-    fontSize: 32,
-    fontWeight: 'bold',
+  subtitle: {
+    marginTop: spacing.sm,
   },
-  subtitleText: {
-    fontSize: 14,
-    marginTop: 8,
-  },
-  formContainer: {
+  form: {
     width: '100%',
   },
-  button: {
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  linkButton: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  linkText: {
-    fontSize: 14,
-    fontWeight: '600',
+  submit: {
+    marginTop: spacing.lg,
   },
 });

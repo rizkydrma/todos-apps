@@ -1,31 +1,33 @@
-import { DarkTheme, LightTheme, ThemeType } from '@/constants/themes';
-import { createContext, useContext, useState } from 'react';
+import { darkTheme, lightTheme, type Theme } from '@/theme';
+import { createContext, useContext, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
 type ThemeContextType = {
   isDarkMode: boolean;
-  theme: ThemeType;
+  theme: Theme;
   toggleTheme: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// THEME PROVIDER
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useColorScheme();
   const [isDarkMode, setIsDarkMode] = useState(systemScheme === 'dark');
 
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
-  const theme = isDarkMode ? DarkTheme : LightTheme;
+  const value = useMemo<ThemeContextType>(
+    () => ({
+      isDarkMode,
+      theme: isDarkMode ? darkTheme : lightTheme,
+      toggleTheme: () => setIsDarkMode((prev) => !prev),
+    }),
+    [isDarkMode]
+  );
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 }
 
-// CUSTOM HOOKS
 export function useAppTheme() {
   const context = useContext(ThemeContext);
 

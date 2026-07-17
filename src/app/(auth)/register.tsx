@@ -1,21 +1,11 @@
-import CustomInputField from '@/components/CustomInputField';
-import { useAppTheme } from '@/context/ThemeContext';
+import { Button, Screen, TextButton, TextField } from '@/components/ui';
+import { AppText } from '@/components/ui/AppText';
+import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
+import { TextInput, View } from 'react-native';
 import z from 'zod';
 
 const registerSchema = z
@@ -27,19 +17,36 @@ const registerSchema = z
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Password tidak cocok',
-    path: ['confirmPassword'], // Pesan error akan ditempelkan di kolom confirmPassword
+    path: ['confirmPassword'],
   });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { theme } = useAppTheme();
-
-  // Reference auto focus input
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
+
+  const styles = useThemedStyles((t) => ({
+    content: {
+      flexGrow: 1,
+      justifyContent: 'center' as const,
+      paddingHorizontal: t.spacing.lg,
+      paddingVertical: t.spacing.xxl,
+    },
+    logoContainer: {
+      alignItems: 'center' as const,
+      marginBottom: t.spacing.xl,
+    },
+    subtitle: {
+      marginTop: t.spacing.sm,
+      textAlign: 'center' as const,
+    },
+    submit: {
+      marginTop: 28,
+    },
+  }));
 
   const {
     control,
@@ -61,118 +68,80 @@ export default function RegisterScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[styles.container, { backgroundColor: theme.background }]}
+    <Screen
+      keyboard
+      scroll
+      dismissKeyboardOnPress
+      safe={{ top: true, bottom: true }}
+      contentStyle={styles.content}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.logoContainer}>
-            <Text style={[styles.logoText, { color: theme.text }]}>
-              Buat Akun
-            </Text>
-            <Text style={[styles.subtitleText, { color: theme.textMuted }]}>
-              Gabung bersama sekarang
-            </Text>
-          </View>
+      <View style={styles.logoContainer}>
+        <AppText variant="title">Buat Akun</AppText>
+        <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
+          Gabung bersama sekarang
+        </AppText>
+      </View>
 
-          {/*FORM INPUT*/}
-          <View>
-            <CustomInputField
-              control={control}
-              name="name"
-              placeholder="Nama Lengkap"
-              returnKeyType="next"
-              autoCapitalize="none"
-              error={errors.name?.message}
-              submitBehavior="submit"
-              onSubmitEditing={() => emailInputRef.current?.focus()}
-            />
+      <View>
+        <TextField
+          control={control}
+          name="name"
+          placeholder="Nama Lengkap"
+          returnKeyType="next"
+          autoCapitalize="words"
+          error={errors.name?.message}
+          submitBehavior="submit"
+          onSubmitEditing={() => emailInputRef.current?.focus()}
+        />
 
-            <CustomInputField
-              innerRef={emailInputRef}
-              control={control}
-              name="email"
-              placeholder="Email"
-              error={errors.email?.message}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              returnKeyType="next"
-              submitBehavior="submit"
-              onSubmitEditing={() => passwordInputRef.current?.focus()}
-            />
+        <TextField
+          innerRef={emailInputRef}
+          control={control}
+          name="email"
+          placeholder="Email"
+          error={errors.email?.message}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => passwordInputRef.current?.focus()}
+        />
 
-            <CustomInputField
-              innerRef={passwordInputRef}
-              control={control}
-              name="password"
-              placeholder="Password"
-              error={errors.password?.message}
-              secureTextEntry
-              returnKeyType="go"
-              onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
-            />
+        <TextField
+          innerRef={passwordInputRef}
+          control={control}
+          name="password"
+          placeholder="Password"
+          error={errors.password?.message}
+          secureTextEntry
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+        />
 
-            <CustomInputField
-              innerRef={confirmPasswordInputRef}
-              control={control}
-              name="password"
-              placeholder="Password"
-              error={errors.password?.message}
-              secureTextEntry
-              returnKeyType="go"
-              onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
-            />
+        <TextField
+          innerRef={confirmPasswordInputRef}
+          control={control}
+          name="confirmPassword"
+          placeholder="Konfirmasi Password"
+          error={errors.confirmPassword?.message}
+          secureTextEntry
+          returnKeyType="go"
+          onSubmitEditing={handleSubmit(onSubmit)}
+        />
 
-            {/* REGISTER */}
-            <TouchableOpacity
-              style={[
-                styles.button,
-                { backgroundColor: theme.primary },
-                !isValid && {
-                  backgroundColor: theme.primaryDisabled,
-                },
-              ]}
-              onPress={handleSubmit(onSubmit)}
-              disabled={!isValid}
-            >
-              <Text style={styles.buttonText}>Daftar Sekarang</Text>
-            </TouchableOpacity>
+        <Button
+          title="Daftar Sekarang"
+          onPress={handleSubmit(onSubmit)}
+          disabled={!isValid}
+          style={styles.submit}
+        />
 
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.linkButton}
-            >
-              <Text style={[styles.linkText, { color: theme.primary }]}>
-                Sudah punya akun? Login disini
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+        <TextButton
+          title="Sudah punya akun? Login disini"
+          onPress={() => router.back()}
+        />
+      </View>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-  },
-  logoContainer: { alignItems: 'center', marginBottom: 32 },
-  logoText: { fontSize: 32, fontWeight: 'bold' },
-  subtitleText: { fontSize: 14, marginTop: 8, textAlign: 'center' },
-  formContainer: { width: '100%' },
-  button: {
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  linkButton: { marginTop: 20, alignItems: 'center' },
-  linkText: { fontSize: 14, fontWeight: '600' },
-});

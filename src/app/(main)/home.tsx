@@ -1,13 +1,13 @@
+import { AppText, ThemeToggle } from '@/components/ui';
 import { useAppTheme } from '@/context/ThemeContext';
+import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet,
-  Text,
+  Pressable,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -18,10 +18,70 @@ interface TodoItem {
 }
 
 export default function Home() {
-  const { theme, toggleTheme, isDarkMode } = useAppTheme();
-
+  const { theme } = useAppTheme();
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [inputText, setInputText] = useState('');
+
+  const styles = useThemedStyles((t) => ({
+    root: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+    },
+    header: {
+      flexDirection: 'row' as const,
+      justifyContent: 'space-between' as const,
+      alignItems: 'center' as const,
+      marginBottom: t.spacing.lg,
+      marginTop: 10,
+    },
+    subtitle: {
+      marginTop: t.spacing.xs,
+    },
+    inputContainer: {
+      flexDirection: 'row' as const,
+      marginBottom: 20,
+    },
+    input: {
+      flex: 1,
+      borderWidth: 1,
+      padding: 14,
+      borderRadius: t.radius.sm,
+      fontSize: t.fontSize.md,
+      marginRight: 10,
+    },
+    addButton: {
+      width: t.size.iconButton,
+      borderRadius: t.radius.sm,
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+    },
+    listContainer: {
+      paddingBottom: 20,
+    },
+    emptyText: {
+      textAlign: 'center' as const,
+      marginTop: t.spacing.xxl,
+    },
+    todoItem: {
+      flexDirection: 'row' as const,
+      justifyContent: 'space-between' as const,
+      alignItems: 'center' as const,
+      padding: t.spacing.md,
+      borderRadius: t.radius.sm,
+      borderWidth: 1,
+      marginBottom: 12,
+    },
+    todoTextContainer: {
+      flex: 1,
+    },
+    todoCompleted: {
+      textDecorationLine: 'line-through' as const,
+    },
+    deleteButton: {
+      padding: 6,
+    },
+  }));
 
   const addTodo = () => {
     if (inputText.trim() === '') return;
@@ -51,162 +111,111 @@ export default function Home() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[styles.root, { backgroundColor: theme.colors.background }]}
     >
-      {/* HEADER */}
       <View style={styles.header}>
         <View>
-          <Text style={[styles.welcomeText, { color: theme.text }]}>
+          <AppText variant="title" style={{ fontSize: theme.fontSize.xl }}>
             Daftar Tugas 📝
-          </Text>
-          <Text style={[styles.subtitleText, { color: theme.textMuted }]}>
+          </AppText>
+          <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
             Kelola produktivitas harianmu
-          </Text>
+          </AppText>
         </View>
-        <TouchableOpacity
-          onPress={toggleTheme}
-          style={[
-            styles.themeButton,
-            {
-              backgroundColor: theme.surface,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <Text style={{ color: theme.text, fontSize: 18 }}>
-            {isDarkMode ? '🌙' : '☀️'}
-          </Text>
-        </TouchableOpacity>
+        <ThemeToggle variant="icon" />
       </View>
 
-      {/* FORM INPUT TODO BARU */}
       <View style={styles.inputContainer}>
         <TextInput
           placeholder="Tambah tugas baru..."
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={theme.colors.textMuted}
           style={[
             styles.input,
             {
-              backgroundColor: theme.surface,
-              borderColor: theme.border,
-              color: theme.text,
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.border,
+              color: theme.colors.text,
             },
           ]}
           value={inputText}
           onChangeText={setInputText}
+          onSubmitEditing={addTodo}
+          returnKeyType="done"
         />
-        <TouchableOpacity
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Tambah tugas"
           onPress={addTodo}
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
+          style={({ pressed }) => [
+            styles.addButton,
+            {
+              backgroundColor: theme.colors.primary,
+              opacity: pressed ? 0.9 : 1,
+            },
+          ]}
         >
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
+          <AppText variant="title" color="onPrimary" style={{ fontSize: 24 }}>
+            +
+          </AppText>
+        </Pressable>
       </View>
 
-      {/* TODO LIST */}
       <FlatList
         data={todos}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
-          <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+          <AppText
+            variant="subtitle"
+            color="textMuted"
+            style={styles.emptyText}
+          >
             Belum ada tugas hari ini. Santai dulu!
-          </Text>
+          </AppText>
         }
         renderItem={({ item }) => (
           <View
             style={[
               styles.todoItem,
               {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
               },
             ]}
           >
-            <TouchableOpacity
+            <Pressable
               onPress={() => toggleTodoComplete(item.id)}
               style={styles.todoTextContainer}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: item.isCompleted }}
             >
-              <Text
-                style={[
-                  styles.todoText,
-                  { color: theme.text },
-                  item.isCompleted && [
-                    styles.todoTextCompleted,
-                    { color: theme.textMuted },
-                  ],
-                ]}
+              <AppText
+                variant="body"
+                color={item.isCompleted ? 'textMuted' : 'text'}
+                style={item.isCompleted ? styles.todoCompleted : undefined}
               >
                 {item.isCompleted ? '✅ ' : '⬜ '} {item.text}
-              </Text>
-            </TouchableOpacity>
+              </AppText>
+            </Pressable>
 
-            <TouchableOpacity
+            <Pressable
               onPress={() => deleteTodo(item.id)}
               style={styles.deleteButton}
+              accessibilityRole="button"
+              accessibilityLabel="Hapus tugas"
+              hitSlop={8}
             >
-              <Text
-                style={{
-                  color: theme.error,
-                  fontWeight: 'bold',
-                }}
+              <AppText
+                variant="link"
+                color="error"
+                style={{ fontWeight: '700' }}
               >
                 Hapus
-              </Text>
-            </TouchableOpacity>
+              </AppText>
+            </Pressable>
           </View>
         )}
       />
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-    marginTop: 10,
-  },
-  welcomeText: { fontSize: 24, fontWeight: 'bold' },
-  subtitleText: { fontSize: 14, marginTop: 4 },
-  themeButton: { padding: 10, borderRadius: 8, borderWidth: 1 },
-  inputContainer: { flexDirection: 'row', marginBottom: 20 },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    padding: 14,
-    borderRadius: 8,
-    fontSize: 16,
-    marginRight: 10,
-  },
-  addButton: {
-    width: 50,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  listContainer: { paddingBottom: 20 },
-  emptyText: { textAlign: 'center', marginTop: 40, fontSize: 14 },
-  todoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  todoTextContainer: { flex: 1 },
-  todoText: { fontSize: 16, fontWeight: '500' },
-  todoTextCompleted: { textDecorationLine: 'line-through' },
-  deleteButton: { padding: 6 },
-  logoutButton: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    marginBottom: 10,
-  },
-  logoutButtonText: { fontSize: 14, fontWeight: '600' },
-});
