@@ -24,9 +24,10 @@ function NavigationLayout() {
           contentStyle: { backgroundColor: theme.colors.background },
         }}
       >
-        <Stack.Screen options={{ headerShown: false }} name="(auth)/login" />
-        <Stack.Screen options={{ headerShown: false }} name="(auth)/register" />
-        <Stack.Screen name="(main)/home" options={{ title: 'Beranda' }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
+        <Stack.Screen name="(main)" options={{ headerShown: false }} />
       </Stack>
     </View>
   );
