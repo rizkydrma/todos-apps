@@ -44,7 +44,8 @@ export default function RegisterScreen() {
       textAlign: 'center' as const,
     },
     submit: {
-      marginTop: 28,
+      marginTop: t.spacing.lg,
+      width: '100%' as const,
     },
   }));
 
