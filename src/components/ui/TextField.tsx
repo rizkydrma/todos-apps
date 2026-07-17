@@ -1,5 +1,6 @@
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
+import { useState } from 'react';
 import { Control, Controller, FieldValues, Path } from 'react-hook-form';
 import { TextInput, type TextInputProps, View } from 'react-native';
 import { AppText } from './AppText';
@@ -23,6 +24,8 @@ export function TextField<T extends FieldValues>({
   ...restProps
 }: TextFieldProps<T>) {
   const { theme } = useAppTheme();
+  const [focused, setFocused] = useState(false);
+
   const styles = useThemedStyles((t) => ({
     container: {
       width: '100%' as const,
@@ -30,15 +33,23 @@ export function TextField<T extends FieldValues>({
     },
     input: {
       borderWidth: 1,
-      padding: 14,
-      borderRadius: t.radius.sm,
+      paddingVertical: 14,
+      paddingHorizontal: t.spacing.md,
+      borderRadius: t.radius.lg,
       fontSize: t.fontSize.md,
+      minHeight: t.size.controlHeight,
     },
     errorText: {
       marginTop: t.spacing.xs,
       marginLeft: t.spacing.xs,
     },
   }));
+
+  const borderColor = error
+    ? theme.colors.error
+    : focused
+      ? theme.colors.primary
+      : theme.colors.border;
 
   return (
     <View style={styles.container}>
@@ -52,16 +63,20 @@ export function TextField<T extends FieldValues>({
             placeholderTextColor={theme.colors.textMuted}
             value={value}
             onChangeText={onChange}
-            onBlur={onBlur}
+            {...restProps}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setFocused(false);
+              onBlur();
+            }}
             style={[
               styles.input,
               {
                 backgroundColor: theme.colors.surface,
-                borderColor: error ? theme.colors.error : theme.colors.border,
+                borderColor,
                 color: theme.colors.text,
               },
             ]}
-            {...restProps}
           />
         )}
       />
