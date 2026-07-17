@@ -1,4 +1,5 @@
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext';
+import { QueryProvider } from '@/providers/QueryProvider';
 import { Stack } from 'expo-router';
 import { StatusBar, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -32,10 +33,12 @@ function NavigationLayout() {
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <NavigationLayout />
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <QueryProvider>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <NavigationLayout />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </QueryProvider>
   );
 }

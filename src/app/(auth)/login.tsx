@@ -6,6 +6,7 @@ import {
   ThemeToggle,
 } from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
+import { useGoogleSignIn } from '@/features/auth/hooks/useGoogleSignIn';
 import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
@@ -24,6 +25,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginScreen() {
   const router = useRouter();
   const passwordInputRef = useRef<TextInput>(null);
+
+  const googleSignIn = useGoogleSignIn();
 
   const {
     control,
@@ -85,6 +88,12 @@ export default function LoginScreen() {
             onPress={handleSubmit(onSubmit)}
             disabled={!isValid}
             style={styles.submit}
+          />
+
+          <Button
+            title="Sign in with Google"
+            onPress={() => googleSignIn.mutate()}
+            disabled={googleSignIn.isPending}
           />
 
           <TextButton
