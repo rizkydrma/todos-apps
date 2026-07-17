@@ -31,7 +31,7 @@ export function Button({
     base: {
       paddingVertical: t.spacing.md,
       paddingHorizontal: t.spacing.lg,
-      borderRadius: t.radius.sm,
+      borderRadius: t.radius.full,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       minHeight: t.size.controlHeight,
@@ -58,11 +58,6 @@ export function Button({
         ? 'onPrimary'
         : 'onPrimary';
 
-  const elevationStyle =
-    variant === 'primary' && !isDisabled
-      ? theme.elevation('sm', theme.colors.shadow)
-      : undefined;
-
   return (
     <Pressable
       accessibilityRole="button"
@@ -74,9 +69,8 @@ export function Button({
         variant === 'ghost' && styles.ghost,
         {
           backgroundColor,
-          opacity: pressed && !isDisabled ? 0.9 : 1,
+          opacity: pressed && !isDisabled ? 0.85 : 1,
         },
-        elevationStyle,
         style,
       ]}
       {...rest}
