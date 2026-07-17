@@ -1,6 +1,8 @@
 import { AppText, ThemeToggle } from '@/components/ui';
+import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   FlatList,
@@ -18,7 +20,9 @@ interface TodoItem {
 }
 
 export default function Home() {
+  const router = useRouter();
   const { theme } = useAppTheme();
+  const { user, signOut } = useAuth();
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [inputText, setInputText] = useState('');
 
@@ -34,6 +38,17 @@ export default function Home() {
       alignItems: 'center' as const,
       marginBottom: t.spacing.lg,
       marginTop: t.spacing.sm,
+    },
+    headerActions: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: t.spacing.sm,
+    },
+    logoutButton: {
+      paddingVertical: t.spacing.xs,
+      paddingHorizontal: t.spacing.sm,
+      minHeight: t.size.touchMin,
+      justifyContent: 'center' as const,
     },
     subtitle: {
       marginTop: t.spacing.xs,
@@ -126,6 +141,11 @@ export default function Home() {
     setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/(auth)/login');
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -137,10 +157,25 @@ export default function Home() {
             Daftar Tugas
           </AppText>
           <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
-            Kelola produktivitas harianmu
+            {user?.name
+              ? `Halo, ${user.name}`
+              : 'Kelola produktivitas harianmu'}
           </AppText>
         </View>
-        <ThemeToggle variant="icon" />
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={handleSignOut}
+            style={styles.logoutButton}
+            accessibilityRole="button"
+            accessibilityLabel="Keluar"
+            hitSlop={theme.spacing.sm}
+          >
+            <AppText variant="link" color="error">
+              Keluar
+            </AppText>
+          </Pressable>
+          <ThemeToggle variant="icon" />
+        </View>
       </View>
 
       <View style={styles.inputContainer}>
