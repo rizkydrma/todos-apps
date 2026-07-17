@@ -6,13 +6,15 @@ import {
   ThemeToggle,
 } from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
+import { useAuth } from '@/context/AuthContext';
+import { useEmailLogin } from '@/features/auth/hooks/useEmailLogin';
 import { useGoogleSignIn } from '@/features/auth/hooks/useGoogleSignIn';
 import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
 import * as z from 'zod';
 
 const loginSchema = z.object({
@@ -24,8 +26,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { status } = useAuth();
   const passwordInputRef = useRef<TextInput>(null);
 
+  const emailLogin = useEmailLogin();
   const googleSignIn = useGoogleSignIn();
 
   const {
@@ -42,8 +46,20 @@ export default function LoginScreen() {
   });
 
   const onSubmit = (data: LoginFormValues) => {
-    console.log('Data :', data);
+    emailLogin.mutate({ email: data.email, password: data.password });
   };
+
+  if (status === 'bootstrapping') {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (status === 'authenticated') {
+    return <Redirect href="/(main)/home" />;
+  }
 
   return (
     <Screen keyboard dismissKeyboardOnPress safe={{ top: true }}>
@@ -86,14 +102,15 @@ export default function LoginScreen() {
           <Button
             title="Sign In"
             onPress={handleSubmit(onSubmit)}
-            disabled={!isValid}
+            disabled={!isValid || emailLogin.isPending}
             style={styles.submit}
           />
 
           <Button
             title="Sign in with Google"
             onPress={() => googleSignIn.mutate()}
-            disabled={googleSignIn.isPending}
+            disabled={googleSignIn.isPending || emailLogin.isPending}
+            style={styles.signInGoogle}
           />
 
           <TextButton
@@ -108,6 +125,11 @@ export default function LoginScreen() {
 
 /** Static layout — no light/dark dependency; spacing from design tokens */
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
@@ -132,5 +154,8 @@ const styles = StyleSheet.create({
   submit: {
     marginTop: spacing.lg,
     width: '100%',
+  },
+  signInGoogle: {
+    marginTop: spacing.lg,
   },
 });

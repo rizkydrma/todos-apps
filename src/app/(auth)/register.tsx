@@ -1,11 +1,13 @@
 import { Button, Screen, TextButton, TextField } from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
+import { useAuth } from '@/context/AuthContext';
+import { useRegister } from '@/features/auth/hooks/useRegister';
 import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
 import z from 'zod';
 
 const registerSchema = z
@@ -24,6 +26,8 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { status } = useAuth();
+  const register = useRegister();
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
@@ -44,8 +48,24 @@ export default function RegisterScreen() {
   });
 
   const onSubmit = (data: RegisterFormValues) => {
-    console.log(`Register berhasil`, data);
+    register.mutate({
+      name: data.name,
+      email: data.email,
+      password: data.password,
+    });
   };
+
+  if (status === 'bootstrapping') {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (status === 'authenticated') {
+    return <Redirect href="/(main)/home" />;
+  }
 
   return (
     <Screen
@@ -113,7 +133,7 @@ export default function RegisterScreen() {
         <Button
           title="Daftar Sekarang"
           onPress={handleSubmit(onSubmit)}
-          disabled={!isValid}
+          disabled={!isValid || register.isPending}
           style={styles.submit}
         />
 
@@ -127,6 +147,11 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
   content: {
     flexGrow: 1,
     justifyContent: 'center' as const,
