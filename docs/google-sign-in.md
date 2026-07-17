@@ -1,9 +1,9 @@
 # Google Sign-In (Android) — Panduan Project Ini
 
-Dokumentasi setup **native Google Sign-In** + **Firebase Auth** untuk app Expo ini.  
+Dokumentasi setup **native Google Sign-In** untuk app Expo ini.  
 Ditulis agar bisa diikuti lagi kalau lupa kenapa error / apa yang harus di-config.
 
-Terakhir diverifikasi berhasil: **Juli 2026**.
+Terakhir diverifikasi: **Juli 2026**.
 
 ---
 
@@ -11,10 +11,11 @@ Terakhir diverifikasi berhasil: **Juli 2026**.
 
 | Item                             | Nilai                                                                      |
 | -------------------------------- | -------------------------------------------------------------------------- |
-| Approach                         | Native only: `@react-native-google-signin/google-signin` + `firebase`      |
-| Dependencies auth                | Hanya 2 package itu — **bukan** expo-auth-session / expo-web-browser       |
+| Approach                         | Native only: `@react-native-google-signin/google-signin`                   |
+| Login path ke backend            | Google `idToken` → **`POST /auth/google`** (JWT session dari backend)      |
+| Firebase di client login         | **Tidak dipakai** — jangan `signInWithCredential` di path login            |
 | Expo Go                          | **Tidak support** — wajib development build                                |
-| Firebase project                 | `todos-c1b87`                                                              |
+| Firebase / GCP project (config)  | `todos-c1b87` (masih dipakai untuk OAuth clients + `google-services.json`) |
 | Android package                  | `todo.android`                                                             |
 | Web client ID (`client_type: 3`) | `244150983370-bdcj1aq5b9el7s5fi6p8fc6egc17hf1l.apps.googleusercontent.com` |
 | Hook                             | `src/features/auth/hooks/useGoogleSignIn.ts`                               |
@@ -32,10 +33,15 @@ GoogleSignin.hasPlayServices()
         ↓
 GoogleSignin.signIn()  →  idToken (native sheet)
         ↓
-GoogleAuthProvider.credential(idToken)
+POST /auth/google { idToken }  →  AuthSession (access + refresh + user)
         ↓
-signInWithCredential(auth, credential)  →  Firebase user
+commitSession(session)  →  SecureStore + AuthContext  →  home
 ```
+
+> **Penting (redesign Juli 2026):** App **tidak** lagi memanggil Firebase `signInWithCredential` di client login path.  
+> Native setup (webClientId type 3, SHA-1, Play Services, prebuild) **tetap wajib** supaya Google mengembalikan `idToken`.  
+> Session JWT, refresh, logout, boot hydrate: lihat **[`docs/auth-flow.md`](./auth-flow.md)**.  
+> Scalar Auth API: https://todo-service.rizky-darmarazak.workers.dev/docs#tag/auth
 
 `GoogleSignin.configure({ webClientId })` harus memakai **OAuth Web client** (`client_type: 3`), **bukan** Android client (`client_type: 1`).
 
@@ -109,8 +115,10 @@ Contoh struktur (hash bisa beda per keystore):
 
 1. `hasPlayServices`
 2. `signIn`
-3. Ambil `idToken`
-4. `signInWithCredential` ke Firebase
+3. Ambil Google `idToken`
+4. `authApi.google(idToken)` → `commitSession` → navigate home
+
+(Tidak ada Firebase credential di langkah ini.)
 
 ---
 
@@ -206,8 +214,8 @@ npx expo run:android
 
 1. Buka login → **Sign in with Google**
 2. Pilih akun
-3. Cek log `✅ Login Google berhasil`
-4. Cek Firebase → **Authentication → Users**
+3. Harus land di `/(main)/home` dengan session JWT (restart app masih login jika refresh valid)
+4. Gagal → cek Alert + network `POST /auth/google` (bukan `/auth/login` Firebase lama)
 
 ---
 
@@ -249,7 +257,12 @@ npx expo run:android
 ### `idToken` null / gagal
 
 - Pastikan `GoogleSignin.configure({ webClientId })` pakai Web client ID
-- Google provider enabled di Firebase
+- Google Sign-In method / OAuth client setup di Firebase Console masih relevan untuk native sheet
+
+### Backend `/auth/google` gagal tapi Google sheet OK
+
+- App sudah kirim Google `idToken` mentah (bukan Firebase ID token)
+- Session & refresh: [`docs/auth-flow.md`](./auth-flow.md)
 
 ### Play Services not available
 
