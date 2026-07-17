@@ -68,11 +68,11 @@ export function getElevation(
     return Platform.select<ViewStyle>({
       ios: {
         shadowColor,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
       },
-      android: { elevation: 2 },
+      android: { elevation: 0 },
       default: {},
     })!;
   }
@@ -80,11 +80,11 @@ export function getElevation(
   return Platform.select<ViewStyle>({
     ios: {
       shadowColor,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
     },
-    android: { elevation: 4 },
+    android: { elevation: 1 },
     default: {},
   })!;
 }

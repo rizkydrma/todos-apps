@@ -10,6 +10,7 @@ export const typography: TypographyStyles = {
   title: {
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
+    letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: fontSize.sm,
