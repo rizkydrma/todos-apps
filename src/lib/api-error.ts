@@ -1,5 +1,10 @@
+/**
+ * Helper mengekstrak pesan error ramah-user dari error Axios / Error biasa.
+ * Dipakai di hook login/register/Google agar Alert menampilkan pesan backend.
+ */
 import { isAxiosError } from 'axios';
 
+/** Bentuk body error standar Todo Service. */
 type ErrorBody = {
   success?: boolean;
   error?: {
@@ -8,6 +13,13 @@ type ErrorBody = {
   };
 };
 
+/**
+ * Ambil message terbaik dari error.
+ * Urutan: error.message dari body API → message Axios → Error.message → fallback.
+ *
+ * @param error - apa pun yang di-throw (AxiosError, Error, unknown)
+ * @param fallback - teks default kalau tidak ada message yang bisa dipakai
+ */
 export function getApiErrorMessage(
   error: unknown,
   fallback = 'Terjadi kesalahan. Coba lagi.'

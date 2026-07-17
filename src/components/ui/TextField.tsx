@@ -1,3 +1,11 @@
+/**
+ * Input form dengan floating label (gaya X) + integrasi react-hook-form.
+ *
+ * - Controller RHF: name + control mengikat value/onChange/onBlur
+ * - Label mengambang saat focus atau ada isi
+ * - Border/label merah kalau ada error
+ * - TextFieldShell: isolasi animasi float agar render Controller tetap "bersih"
+ */
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useEffect, useRef, useState } from 'react';
@@ -12,7 +20,7 @@ import {
 } from 'react-native';
 import { AppText } from './AppText';
 
-/** X-like auth field height (room for floating label). */
+/** Tinggi field + posisi/ukuran label saat rest vs float. */
 const FIELD_HEIGHT = 56;
 const LABEL_REST_TOP = 18;
 const LABEL_FLOAT_TOP = 8;
@@ -25,19 +33,26 @@ export type TextFieldProps<T extends FieldValues> = Omit<
 > & {
   control: Control<T>;
   name: Path<T>;
-  /** Floating label text (X-style). Falls back to `placeholder` if omitted. */
+  /** Teks floating label. Default: placeholder. */
   label?: string;
-  /** Used as floating label when `label` is not set. */
+  /** Dipakai sebagai label jika `label` tidak diisi. */
   placeholder?: string;
+  /** Pesan error di bawah field (dari formState.errors). */
   error?: string;
+  /** Ref ke TextInput (untuk focus berantai antar field). */
   innerRef?: React.RefObject<TextInput | null>;
 };
 
+/** True jika value form dianggap "ada isi" (label harus float). */
 function hasFieldValue(value: unknown): boolean {
   if (value == null) return false;
   return String(value).length > 0;
 }
 
+/**
+ * Field terikat react-hook-form.
+ * Props TextInput lain (secureTextEntry, keyboardType, …) diteruskan lewat rest.
+ */
 export function TextField<T extends FieldValues>({
   control,
   name,
@@ -51,6 +66,7 @@ export function TextField<T extends FieldValues>({
 }: TextFieldProps<T>) {
   const { theme } = useAppTheme();
   const [focused, setFocused] = useState(false);
+  // 0 = label di tengah (rest), 1 = label naik kecil (float)
   const [floatAnim] = useState(() => new Animated.Value(0));
   const labelText = label ?? placeholder;
 
@@ -68,6 +84,7 @@ export function TextField<T extends FieldValues>({
     },
     input: {
       fontSize: t.fontSize.md,
+      // Ruang di atas untuk label float
       paddingTop: 22,
       paddingBottom: 8,
       paddingHorizontal: 0,
@@ -80,6 +97,7 @@ export function TextField<T extends FieldValues>({
     },
   }));
 
+  // Border: error > focus > default
   const borderColor = error
     ? theme.colors.error
     : focused
@@ -98,6 +116,7 @@ export function TextField<T extends FieldValues>({
         control={control}
         name={name}
         render={({ field: { onChange, onBlur: onFieldBlur, value } }) => {
+          // Float jika focus ATAU sudah ada nilai
           const floated = focused || hasFieldValue(value);
 
           return (
@@ -127,7 +146,7 @@ export function TextField<T extends FieldValues>({
                 }}
                 onBlur={(e) => {
                   setFocused(false);
-                  onFieldBlur();
+                  onFieldBlur(); // beritahu RHF field touched
                   onBlurProp?.(e);
                 }}
                 style={[
@@ -162,7 +181,8 @@ type TextFieldShellProps = {
 };
 
 /**
- * Isolates the float animation effect so Controller render stays pure.
+ * Isolasi side-effect animasi float.
+ * Dipisah dari render Controller supaya tidak campur logic animasi di callback RHF.
  */
 function TextFieldShell({
   floatAnim,
@@ -176,7 +196,7 @@ function TextFieldShell({
   const isFirstRender = useRef(true);
 
   useEffect(() => {
-    // Skip animation on mount so pre-filled values don't flash resting label
+    // Skip animasi di mount: pre-filled value langsung float tanpa "flash"
     if (isFirstRender.current) {
       isFirstRender.current = false;
       floatAnim.setValue(floated ? 1 : 0);
@@ -186,7 +206,7 @@ function TextFieldShell({
     Animated.timing(floatAnim, {
       toValue: floated ? 1 : 0,
       duration: 150,
-      useNativeDriver: false,
+      useNativeDriver: false, // fontSize/top tidak didukung native driver
     }).start();
   }, [floated, floatAnim]);
 

@@ -1,15 +1,26 @@
+/**
+ * Screen registrasi akun baru.
+ *
+ * - Zod: name, email, password min 6, confirmPassword harus cocok (refine)
+ * - Auth guard di root Stack.Protected (hanya mount saat unauthenticated)
+ * - useRegister mutation → auto session + ke home
+ * - Focus chain: name → email → password → confirm → submit
+ */
 import { Button, Screen, TextButton, TextField } from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
-import { useAuth } from '@/context/AuthContext';
 import { useRegister } from '@/features/auth/hooks/useRegister';
 import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import z from 'zod';
 
+/**
+ * Schema register + refine password === confirmPassword.
+ * path: ['confirmPassword'] → error muncul di field konfirmasi.
+ */
 const registerSchema = z
   .object({
     name: z.string().min(1, 'Nama tidak boleh kosong'),
@@ -26,8 +37,8 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { status } = useAuth();
   const register = useRegister();
+  // Refs untuk keyboard "next" antar field
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
@@ -47,6 +58,7 @@ export default function RegisterScreen() {
     mode: 'onChange',
   });
 
+  /** Kirim name/email/password saja (confirm tidak dikirim ke API). */
   const onSubmit = (data: RegisterFormValues) => {
     register.mutate({
       name: data.name,
@@ -54,18 +66,6 @@ export default function RegisterScreen() {
       password: data.password,
     });
   };
-
-  if (status === 'bootstrapping') {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
-  if (status === 'authenticated') {
-    return <Redirect href="/(main)/home" />;
-  }
 
   return (
     <Screen
@@ -147,11 +147,6 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
-  },
   content: {
     flexGrow: 1,
     justifyContent: 'center' as const,

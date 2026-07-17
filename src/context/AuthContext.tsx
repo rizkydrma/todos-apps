@@ -1,3 +1,14 @@
+/**
+ * Context global status autentikasi.
+ *
+ * Menyediakan:
+ * - user, status (bootstrapping | authenticated | unauthenticated)
+ * - commitSession: simpan session setelah login/register sukses
+ * - signOut: logout API + clear storage + Google signOut
+ *
+ * Saat mount: baca SecureStore → refresh token → set authenticated/unauthenticated.
+ * Screen index/main/login membaca status lewat useAuth() untuk redirect.
+ */
 import { authApi } from '@/features/auth/api/auth.api';
 import type { AuthSession, PublicUser } from '@/features/auth/types';
 import {
@@ -18,22 +29,31 @@ import {
   type ReactNode,
 } from 'react';
 
+/** Status auth app: loading awal | sudah login | belum login. */
 type AuthStatus = 'bootstrapping' | 'authenticated' | 'unauthenticated';
 
 type AuthContextValue = {
   user: PublicUser | null;
   status: AuthStatus;
   isAuthenticated: boolean;
+  /** Simpan session dari login/register/Google ke storage + state. */
   commitSession: (session: AuthSession) => Promise<void>;
+  /** Logout: best-effort API + clear local + Google. */
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/**
+ * Provider auth — bungkus di root layout (setelah Query/Theme).
+ * Jangan panggil useAuth di luar provider ini.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
+  // Mulai bootstrapping supaya UI tampil loading, bukan flash ke login
   const [status, setStatus] = useState<AuthStatus>('bootstrapping');
 
+  // Sinkronkan state React bila session di-clear/refresh dari tempat lain (mis. interceptor)
   useEffect(() => {
     return subscribeSession((next) => {
       setUser(next);
@@ -41,6 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /**
+   * Bootstrap: hydrate SecureStore → kalau ada refresh token, tukar ke session valid.
+   * Flag `cancelled` mencegah setState setelah unmount.
+   */
   useEffect(() => {
     let cancelled = false;
 
@@ -49,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const stored = await hydrateSessionFromStorage();
         if (cancelled) return;
 
+        // Tidak ada refresh token → user belum pernah login (atau sudah logout)
         if (!stored.refreshToken) {
           await clearSession();
           if (!cancelled) {
@@ -58,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // Validasi/rotate token lewat backend
         const session = await authApi.refresh(stored.refreshToken);
         if (cancelled) return;
         await persistSession(session);
@@ -66,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setStatus('authenticated');
         }
       } catch {
+        // Token invalid/expired → bersihkan, minta login lagi
         await clearSession();
         if (!cancelled) {
           setUser(null);
@@ -79,19 +106,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /** Dipanggil hook login/register/Google setelah API sukses. */
   const commitSession = useCallback(async (session: AuthSession) => {
     await persistSession(session);
     setUser(session.user);
     setStatus('authenticated');
   }, []);
 
+  /**
+   * Logout:
+   * 1. Best-effort revoke refresh di server
+   * 2. Hapus local session
+   * 3. Best-effort Google Sign-In signOut (supaya sheet Google tidak auto-pilih akun lama)
+   */
   const signOut = useCallback(async () => {
     const refresh = getRefreshToken();
     if (refresh) {
       try {
         await authApi.logout(refresh);
       } catch {
-        // best-effort
+        // best-effort — tetap clear lokal meski network gagal
       }
     }
     await clearSession();
@@ -118,6 +152,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/**
+ * Hook akses auth. Harus di dalam AuthProvider.
+ * Contoh: const { user, status, signOut } = useAuth();
+ */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

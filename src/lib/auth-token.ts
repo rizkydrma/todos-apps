@@ -1,4 +1,7 @@
-/** Compatibility re-exports — prefer importing from `@/lib/auth-session`. */
+/**
+ * Re-export kompatibilitas (file lama).
+ * Prefer impor langsung dari `@/lib/auth-session`.
+ */
 export {
   getAccessToken,
   getRefreshToken,

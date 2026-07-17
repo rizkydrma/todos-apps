@@ -1,3 +1,10 @@
+/**
+ * Tombol primer UI (primary / ghost / danger).
+ *
+ * - loading: tampil spinner, nonaktifkan press
+ * - disabled atau loading → isDisabled
+ * - Warna dari theme (primary, error, primaryDisabled)
+ */
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import {
@@ -13,10 +20,14 @@ export type ButtonVariant = 'primary' | 'ghost' | 'danger';
 export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   title: string;
   variant?: ButtonVariant;
+  /** True = spinner di dalam tombol, tidak bisa ditekan. */
   loading?: boolean;
   style?: ViewStyle | ViewStyle[];
 };
 
+/**
+ * Pressable berbentuk pill. Pakai title string, bukan children bebas.
+ */
 export function Button({
   title,
   variant = 'primary',
@@ -44,6 +55,7 @@ export function Button({
 
   const isDisabled = Boolean(disabled || loading);
 
+  // Pilih background per variant + state disabled
   const backgroundColor = (() => {
     if (variant === 'ghost') return 'transparent';
     if (variant === 'danger') return theme.colors.error;
@@ -51,6 +63,7 @@ export function Button({
     return theme.colors.primary;
   })();
 
+  // Warna label: ghost pakai primary text; solid pakai onPrimary (putih di atas biru/merah)
   const textColor =
     variant === 'ghost'
       ? 'primary'

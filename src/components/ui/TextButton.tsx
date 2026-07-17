@@ -1,3 +1,7 @@
+/**
+ * Tombol teks (link-style) — mis. "Belum punya akun? Daftar di sini".
+ * Bukan solid button; min height touch target + hitSlop untuk mudah ditekan.
+ */
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { Pressable, type PressableProps } from 'react-native';
 import { AppText } from './AppText';

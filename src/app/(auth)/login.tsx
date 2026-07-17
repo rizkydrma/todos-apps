@@ -1,3 +1,11 @@
+/**
+ * Screen login: email/password + Google Sign-In.
+ *
+ * - Zod + react-hook-form untuk validasi live (mode onChange)
+ * - Auth guard di root Stack.Protected (screen ini hanya mount saat unauthenticated)
+ * - Focus berantai: email → password → submit
+ * - Setelah sukses: hook login navigasi ke /(main)/home
+ */
 import {
   Button,
   Screen,
@@ -6,17 +14,17 @@ import {
   ThemeToggle,
 } from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
-import { useAuth } from '@/context/AuthContext';
 import { useEmailLogin } from '@/features/auth/hooks/useEmailLogin';
 import { useGoogleSignIn } from '@/features/auth/hooks/useGoogleSignIn';
 import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import * as z from 'zod';
 
+/** Schema validasi form login. */
 const loginSchema = z.object({
   email: z.email('Format email tidak valid').min(1, 'Email tidak boleh kosong'),
   password: z.string().min(6, 'Paswword terlalu pendek'),
@@ -26,7 +34,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { status } = useAuth();
+  // Ref untuk pindah focus ke password saat user tekan "next" di email
   const passwordInputRef = useRef<TextInput>(null);
 
   const emailLogin = useEmailLogin();
@@ -42,24 +50,13 @@ export default function LoginScreen() {
       email: '',
       password: '',
     },
-    mode: 'onChange',
+    mode: 'onChange', // validasi tiap ketikan → isValid update real-time
   });
 
+  /** Submit form → mutation login email. */
   const onSubmit = (data: LoginFormValues) => {
     emailLogin.mutate({ email: data.email, password: data.password });
   };
-
-  if (status === 'bootstrapping') {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
-  if (status === 'authenticated') {
-    return <Redirect href="/(main)/home" />;
-  }
 
   return (
     <Screen keyboard dismissKeyboardOnPress safe={{ top: true }}>
@@ -123,13 +120,8 @@ export default function LoginScreen() {
   );
 }
 
-/** Static layout — no light/dark dependency; spacing from design tokens */
+/** Layout statis — spasi dari design tokens, bukan warna tema. */
 const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   content: {
     flex: 1,
     justifyContent: 'center',

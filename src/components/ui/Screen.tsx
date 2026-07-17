@@ -1,3 +1,14 @@
+/**
+ * Layout layar standar: background tema + opsi keyboard / scroll / safe area.
+ *
+ * Props penting:
+ * - keyboard: KeyboardAvoidingView (iOS padding)
+ * - scroll: ScrollView untuk form panjang
+ * - dismissKeyboardOnPress: tap di luar input menutup keyboard
+ * - safe: padding notch/home indicator (bool atau per-sisi)
+ *
+ * Dipakai di login/register supaya layout form konsisten.
+ */
 import { useAppTheme } from '@/context/ThemeContext';
 import {
   Keyboard,
@@ -14,13 +25,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export type ScreenProps = {
   children: React.ReactNode;
-  /** Wrap with KeyboardAvoidingView */
+  /** Bungkus dengan KeyboardAvoidingView. */
   keyboard?: boolean;
-  /** Use ScrollView as content container */
+  /** Konten di dalam ScrollView. */
   scroll?: boolean;
-  /** Dismiss keyboard when tapping outside inputs */
+  /** Tap di luar input → Keyboard.dismiss(). */
   dismissKeyboardOnPress?: boolean;
-  /** Apply top/right/bottom/left safe area padding */
+  /** Padding safe area: true = semua sisi, atau object pilih sisi. */
   safe?:
     | boolean
     | { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean };
@@ -28,6 +39,9 @@ export type ScreenProps = {
   contentStyle?: StyleProp<ViewStyle>;
 };
 
+/**
+ * Susun tree: root (View/KAV) → optional dismiss → ScrollView/View → children.
+ */
 export function Screen({
   children,
   keyboard = false,
@@ -40,6 +54,7 @@ export function Screen({
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
 
+  // Normalisasi prop safe → config booleans per sisi
   const safeConfig =
     safe === true
       ? { top: true, bottom: true, left: true, right: true }
@@ -59,6 +74,7 @@ export function Screen({
     paddingRight: safeConfig.right ? insets.right : undefined,
   };
 
+  // Konten: scrollable atau View biasa
   const content = scroll ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
@@ -71,6 +87,7 @@ export function Screen({
     <View style={[styles.flex, contentStyle]}>{children}</View>
   );
 
+  // Opsional: tap di luar field menutup keyboard
   const body = dismissKeyboardOnPress ? (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       {content}

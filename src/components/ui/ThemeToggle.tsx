@@ -1,3 +1,8 @@
+/**
+ * Tombol ganti light/dark mode.
+ * variant "text" → label Light/Dark (login)
+ * variant "icon" → ☾ / ☀ (home header)
+ */
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { Pressable } from 'react-native';
@@ -54,6 +59,7 @@ export function ThemeToggle({ variant = 'text' }: ThemeToggleProps) {
     );
   }
 
+  // variant "text"
   return (
     <Pressable
       accessibilityRole="button"

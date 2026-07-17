@@ -1,8 +1,17 @@
-/** Raw palette — internal to theme module only */
+/**
+ * Palet warna semantik (light + dark) ala X/Twitter.
+ *
+ * - `palette`: hex mentah, hanya dipakai di file ini
+ * - `lightColors` / `darkColors`: role semantik (background, primary, error, …)
+ *
+ * Komponen UI harus pakai theme.colors.*, jangan hardcode hex di screen.
+ */
+
+/** Hex mentah — internal module theme saja. */
 const palette = {
   white: '#FFFFFF',
   black: '#000000',
-  // X-like neutrals
+  // Netral ala X
   gray50: '#F7F9F9',
   gray100: '#EFF3F4',
   gray400: '#536471',
@@ -11,13 +20,14 @@ const palette = {
   gray800: '#16181C',
   textDark: '#0F1419',
   textLight: '#E7E9EA',
-  // X blue + disabled solids (RN needs solid hex, not opacity)
+  // Biru X + solid disabled (RN tidak selalu bagus dengan opacity di background)
   blue: '#1D9BF0',
   blueDisabledDark: '#0D4F7A',
   blueDisabledLight: '#8ECDF8',
   red: '#F4212E',
 } as const;
 
+/** Role warna yang dipakai komponen (bukan nama hex). */
 export type SemanticColors = {
   background: string;
   surface: string;
@@ -31,6 +41,7 @@ export type SemanticColors = {
   shadow: string;
 };
 
+/** Mapping role → hex untuk light mode. */
 export const lightColors: SemanticColors = {
   background: palette.white,
   surface: palette.gray50,
@@ -44,6 +55,7 @@ export const lightColors: SemanticColors = {
   shadow: palette.black,
 };
 
+/** Mapping role → hex untuk dark mode. */
 export const darkColors: SemanticColors = {
   background: palette.black,
   surface: palette.gray800,
@@ -57,4 +69,5 @@ export const darkColors: SemanticColors = {
   shadow: palette.black,
 };
 
+/** Nama role warna (untuk AppText color prop, dll). */
 export type ColorRole = keyof SemanticColors;

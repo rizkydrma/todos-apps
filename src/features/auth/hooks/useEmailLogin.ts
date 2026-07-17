@@ -1,3 +1,12 @@
+/**
+ * Hook login email/password (React Query mutation).
+ *
+ * Alur sukses: authApi.login → commitSession → ganti route ke home.
+ * Alur gagal: Alert dengan pesan dari getApiErrorMessage.
+ *
+ * Di screen: emailLogin.mutate({ email, password })
+ * Cek loading: emailLogin.isPending
+ */
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/features/auth/api/auth.api';
 import type { AuthSession, LoginBody } from '@/features/auth/types';
@@ -14,6 +23,7 @@ export const useEmailLogin = () => {
     mutationFn: (body: LoginBody): Promise<AuthSession> => authApi.login(body),
 
     onSuccess: async (session) => {
+      // Simpan token + user, lalu masuk area main
       await commitSession(session);
       router.replace('/(main)/home');
     },

@@ -1,3 +1,11 @@
+/**
+ * Inisialisasi Firebase App + Auth (client).
+ *
+ * Dipakai untuk alur Google Sign-In:
+ * Google idToken → Firebase credential → Firebase ID token → dikirim ke backend /auth/google.
+ *
+ * Config ini harus cocok dengan project Firebase di google-services.json.
+ */
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
@@ -11,4 +19,6 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+/** Instance Firebase Auth — dipakai signInWithCredential di useGoogleSignIn. */
 export const auth = getAuth(app);

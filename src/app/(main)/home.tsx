@@ -1,3 +1,13 @@
+/**
+ * Screen beranda: daftar todo lokal (state in-memory, belum sync API).
+ *
+ * Fitur:
+ * - Tambah / centang selesai / hapus todo
+ * - Header: sapaan user, logout, ThemeToggle
+ * - Style lewat useThemedStyles (ikut light/dark)
+ *
+ * Catatan: todos hilang saat app restart (belum persist/backend).
+ */
 import { AppText, ThemeToggle } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
@@ -13,6 +23,7 @@ import {
   View,
 } from 'react-native';
 
+/** Item todo di state lokal. */
 interface TodoItem {
   id: string;
   text: string;
@@ -26,6 +37,7 @@ export default function Home() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [inputText, setInputText] = useState('');
 
+  // Style bergantung theme — recompute saat toggle light/dark
   const styles = useThemedStyles((t) => ({
     root: {
       flex: 1,
@@ -116,6 +128,7 @@ export default function Home() {
     },
   }));
 
+  /** Tambah todo dari input; id = timestamp string (sementara). */
   const addTodo = () => {
     if (inputText.trim() === '') return;
 
@@ -129,6 +142,7 @@ export default function Home() {
     setInputText('');
   };
 
+  /** Toggle checklist selesai / belum. */
   const toggleTodoComplete = (id: string) => {
     setTodos((prevTodos) =>
       prevTodos.map((todo) =>
@@ -137,10 +151,12 @@ export default function Home() {
     );
   };
 
+  /** Hapus satu todo dari list. */
   const deleteTodo = (id: string) => {
     setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
   };
 
+  /** Logout lalu ganti stack ke login (replace agar back tidak ke home). */
   const handleSignOut = async () => {
     await signOut();
     router.replace('/(auth)/login');
@@ -178,6 +194,7 @@ export default function Home() {
         </View>
       </View>
 
+      {/* Input + tombol tambah */}
       <View style={styles.inputContainer}>
         <TextInput
           placeholder="Tambah tugas baru..."
@@ -217,6 +234,7 @@ export default function Home() {
         </Pressable>
       </View>
 
+      {/* Daftar todo */}
       <FlatList
         data={todos}
         keyExtractor={(item) => item.id}

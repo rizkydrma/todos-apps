@@ -1,3 +1,15 @@
+/**
+ * Hook Google Sign-In native (Android/iOS) + exchange ke session backend.
+ *
+ * Alur lengkap:
+ * 1. GoogleSignin.signIn() → dapat Google OAuth idToken
+ * 2. Tukar ke Firebase (signInWithCredential) → Firebase user
+ * 3. Ambil Firebase ID token (iss: securetoken.google.com/...)
+ * 4. POST /auth/google dengan token Firebase (bukan raw Google OAuth)
+ * 5. commitSession + navigate home
+ *
+ * webClientId di configure() harus Web client dari Google Cloud Console.
+ */
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/features/auth/api/auth.api';
 import type { AuthSession } from '@/features/auth/types';
@@ -14,17 +26,15 @@ import { useRouter } from 'expo-router';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { Alert } from 'react-native';
 
+// Konfigurasi sekali di load module (webClientId = OAuth Web client)
 GoogleSignin.configure({
   webClientId:
     '244150983370-bdcj1aq5b9el7s5fi6p8fc6egc17hf1l.apps.googleusercontent.com',
 });
 
 /**
- * Google native sheet → Firebase credential exchange → backend session.
- *
- * Backend `/auth/google` expects a **Firebase ID token**
- * (`iss: https://securetoken.google.com/todos-c1b87`), not the raw Google
- * OAuth idToken (`iss: https://accounts.google.com`).
+ * Mutation tanpa argumen: googleSignIn.mutate()
+ * Backend /auth/google mengharapkan Firebase ID token, bukan Google idToken mentah.
  */
 export const useGoogleSignIn = () => {
   const router = useRouter();
@@ -32,6 +42,7 @@ export const useGoogleSignIn = () => {
 
   return useMutation({
     mutationFn: async (): Promise<AuthSession> => {
+      // Pastikan Play Services ada (Android)
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
@@ -42,9 +53,10 @@ export const useGoogleSignIn = () => {
         throw new Error('Google Sign-In gagal: idToken tidak tersedia');
       }
 
-      // Exchange Google idToken → Firebase user, then send Firebase JWT to API.
+      // Google idToken → kredensial Firebase → user Firebase
       const credential = GoogleAuthProvider.credential(response.data.idToken);
       const { user } = await signInWithCredential(auth, credential);
+      // Token yang dikirim ke API kita = JWT Firebase
       const firebaseIdToken = await user.getIdToken();
 
       return authApi.google(firebaseIdToken);
@@ -56,6 +68,7 @@ export const useGoogleSignIn = () => {
     },
 
     onError: (error: Error) => {
+      // User cancel / masih proses → jangan tampil Alert
       if (isErrorWithCode(error)) {
         switch (error.code) {
           case statusCodes.SIGN_IN_CANCELLED:

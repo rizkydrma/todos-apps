@@ -1,3 +1,7 @@
+/**
+ * Barrel export komponen UI reusable.
+ * Impor dari `@/components/ui` supaya path pendek dan konsisten.
+ */
 export { AppText, type AppTextProps } from './AppText';
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
 export { Screen, type ScreenProps } from './Screen';

@@ -1,22 +1,12 @@
-import { useAuth } from '@/context/AuthContext';
-import { Redirect, Stack } from 'expo-router';
-import { ActivityIndicator, View } from 'react-native';
+/**
+ * Layout group (main) — stack screen privat.
+ *
+ * Auth guard TIDAK di sini: sudah di root lewat Stack.Protected.
+ * File ini hanya mengatur nested navigator (header, title, dll).
+ */
+import { Stack } from 'expo-router';
 
 export default function MainLayout() {
-  const { status } = useAuth();
-
-  if (status === 'bootstrapping') {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
-  if (status !== 'authenticated') {
-    return <Redirect href="/(auth)/login" />;
-  }
-
   return (
     <Stack
       screenOptions={{
