@@ -1,43 +1,78 @@
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Control, Controller, FieldValues, Path } from 'react-hook-form';
-import { TextInput, type TextInputProps, View } from 'react-native';
+import {
+  Animated,
+  TextInput,
+  type StyleProp,
+  type TextInputProps,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { AppText } from './AppText';
+
+/** X-like auth field height (room for floating label). */
+const FIELD_HEIGHT = 56;
+const LABEL_REST_TOP = 18;
+const LABEL_FLOAT_TOP = 8;
+const LABEL_REST_SIZE = 16;
+const LABEL_FLOAT_SIZE = 13;
 
 export type TextFieldProps<T extends FieldValues> = Omit<
   TextInputProps,
-  'style'
+  'style' | 'placeholder'
 > & {
   control: Control<T>;
   name: Path<T>;
+  /** Floating label text (X-style). Falls back to `placeholder` if omitted. */
+  label?: string;
+  /** Used as floating label when `label` is not set. */
+  placeholder?: string;
   error?: string;
   innerRef?: React.RefObject<TextInput | null>;
 };
+
+function hasFieldValue(value: unknown): boolean {
+  if (value == null) return false;
+  return String(value).length > 0;
+}
 
 export function TextField<T extends FieldValues>({
   control,
   name,
   error,
   innerRef,
+  label,
   placeholder,
+  onFocus,
+  onBlur: onBlurProp,
   ...restProps
 }: TextFieldProps<T>) {
   const { theme } = useAppTheme();
   const [focused, setFocused] = useState(false);
+  const [floatAnim] = useState(() => new Animated.Value(0));
+  const labelText = label ?? placeholder;
 
   const styles = useThemedStyles((t) => ({
     container: {
       width: '100%' as const,
       marginTop: t.spacing.md,
     },
-    input: {
+    field: {
+      minHeight: FIELD_HEIGHT,
       borderWidth: 1,
-      paddingVertical: 14,
+      borderRadius: t.radius.sm,
       paddingHorizontal: t.spacing.md,
-      borderRadius: t.radius.lg,
+      justifyContent: 'center' as const,
+    },
+    input: {
       fontSize: t.fontSize.md,
-      minHeight: t.size.controlHeight,
+      paddingTop: 22,
+      paddingBottom: 8,
+      paddingHorizontal: 0,
+      margin: 0,
+      minHeight: FIELD_HEIGHT - 2,
     },
     errorText: {
       marginTop: t.spacing.xs,
@@ -51,34 +86,60 @@ export function TextField<T extends FieldValues>({
       ? theme.colors.primary
       : theme.colors.border;
 
+  const labelColor = error
+    ? theme.colors.error
+    : focused
+      ? theme.colors.primary
+      : theme.colors.textMuted;
+
   return (
     <View style={styles.container}>
       <Controller
         control={control}
         name={name}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <TextInput
-            ref={innerRef}
-            placeholder={placeholder}
-            placeholderTextColor={theme.colors.textMuted}
-            value={value}
-            onChangeText={onChange}
-            {...restProps}
-            onFocus={() => setFocused(true)}
-            onBlur={() => {
-              setFocused(false);
-              onBlur();
-            }}
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.colors.surface,
-                borderColor,
-                color: theme.colors.text,
-              },
-            ]}
-          />
-        )}
+        render={({ field: { onChange, onBlur: onFieldBlur, value } }) => {
+          const floated = focused || hasFieldValue(value);
+
+          return (
+            <TextFieldShell
+              floatAnim={floatAnim}
+              floated={floated}
+              labelText={labelText}
+              labelColor={labelColor}
+              fieldStyle={[
+                styles.field,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor,
+                },
+              ]}
+              labelLeft={theme.spacing.md}
+            >
+              <TextInput
+                ref={innerRef}
+                value={value == null ? '' : String(value)}
+                onChangeText={onChange}
+                accessibilityLabel={labelText}
+                {...restProps}
+                onFocus={(e) => {
+                  setFocused(true);
+                  onFocus?.(e);
+                }}
+                onBlur={(e) => {
+                  setFocused(false);
+                  onFieldBlur();
+                  onBlurProp?.(e);
+                }}
+                style={[
+                  styles.input,
+                  {
+                    color: theme.colors.text,
+                  },
+                ]}
+              />
+            </TextFieldShell>
+          );
+        }}
       />
 
       {error ? (
@@ -86,6 +147,73 @@ export function TextField<T extends FieldValues>({
           {error}
         </AppText>
       ) : null}
+    </View>
+  );
+}
+
+type TextFieldShellProps = {
+  floatAnim: Animated.Value;
+  floated: boolean;
+  labelText?: string;
+  labelColor: string;
+  labelLeft: number;
+  fieldStyle: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+};
+
+/**
+ * Isolates the float animation effect so Controller render stays pure.
+ */
+function TextFieldShell({
+  floatAnim,
+  floated,
+  labelText,
+  labelColor,
+  labelLeft,
+  fieldStyle,
+  children,
+}: TextFieldShellProps) {
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    // Skip animation on mount so pre-filled values don't flash resting label
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      floatAnim.setValue(floated ? 1 : 0);
+      return;
+    }
+
+    Animated.timing(floatAnim, {
+      toValue: floated ? 1 : 0,
+      duration: 150,
+      useNativeDriver: false,
+    }).start();
+  }, [floated, floatAnim]);
+
+  return (
+    <View style={fieldStyle}>
+      {labelText ? (
+        <Animated.Text
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: labelLeft,
+            top: floatAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [LABEL_REST_TOP, LABEL_FLOAT_TOP],
+            }),
+            fontSize: floatAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [LABEL_REST_SIZE, LABEL_FLOAT_SIZE],
+            }),
+            color: labelColor,
+            zIndex: 1,
+          }}
+        >
+          {labelText}
+        </Animated.Text>
+      ) : null}
+      {children}
     </View>
   );
 }

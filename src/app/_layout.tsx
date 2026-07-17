@@ -1,14 +1,17 @@
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function NavigationLayout() {
   const { isDarkMode, theme } = useAppTheme();
 
   return (
-    <>
-      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.colors.background}
+      />
 
       <Stack
         screenOptions={{
@@ -23,7 +26,7 @@ function NavigationLayout() {
         <Stack.Screen options={{ headerShown: false }} name="(auth)/register" />
         <Stack.Screen name="(main)/home" options={{ title: 'Beranda' }} />
       </Stack>
-    </>
+    </View>
   );
 }
 

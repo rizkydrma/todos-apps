@@ -1,11 +1,11 @@
 import { Button, Screen, TextButton, TextField } from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
-import { useThemedStyles } from '@/hooks/useThemedStyles';
+import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import z from 'zod';
 
 const registerSchema = z
@@ -27,27 +27,6 @@ export default function RegisterScreen() {
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
-
-  const styles = useThemedStyles((t) => ({
-    content: {
-      flexGrow: 1,
-      justifyContent: 'center' as const,
-      paddingHorizontal: t.spacing.lg,
-      paddingVertical: t.spacing.xxl,
-    },
-    logoContainer: {
-      alignItems: 'center' as const,
-      marginBottom: t.spacing.xl,
-    },
-    subtitle: {
-      marginTop: t.spacing.sm,
-      textAlign: 'center' as const,
-    },
-    submit: {
-      marginTop: t.spacing.lg,
-      width: '100%' as const,
-    },
-  }));
 
   const {
     control,
@@ -146,3 +125,24 @@ export default function RegisterScreen() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  content: {
+    flexGrow: 1,
+    justifyContent: 'center' as const,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xxl,
+  },
+  logoContainer: {
+    alignItems: 'center' as const,
+    marginBottom: spacing.xl,
+  },
+  subtitle: {
+    marginTop: spacing.sm,
+    textAlign: 'center' as const,
+  },
+  submit: {
+    marginTop: spacing.lg,
+    width: '100%' as const,
+  },
+});
