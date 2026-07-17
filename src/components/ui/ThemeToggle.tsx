@@ -17,7 +17,7 @@ export function ThemeToggle({ variant = 'text' }: ThemeToggleProps) {
     },
     icon: {
       padding: 10,
-      borderRadius: t.radius.sm,
+      borderRadius: t.radius.full,
       borderWidth: 1,
       minWidth: t.size.touchMin,
       minHeight: t.size.touchMin,
@@ -39,12 +39,16 @@ export function ThemeToggle({ variant = 'text' }: ThemeToggleProps) {
           {
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.border,
+            borderRadius: theme.radius.full,
             opacity: pressed ? 0.85 : 1,
           },
         ]}
       >
-        <AppText style={{ fontSize: theme.fontSize.lg }}>
-          {isDarkMode ? '🌙' : '☀️'}
+        <AppText
+          color="text"
+          style={{ fontSize: theme.fontSize.md, fontWeight: '600' }}
+        >
+          {isDarkMode ? '☾' : '☀'}
         </AppText>
       </Pressable>
     );
