@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
   },
   subtitle: {
     marginTop: spacing.sm,
@@ -122,5 +122,6 @@ const styles = StyleSheet.create({
   },
   submit: {
     marginTop: spacing.lg,
+    width: '100%',
   },
 });
