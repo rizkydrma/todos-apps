@@ -25,39 +25,46 @@ export default function Home() {
   const styles = useThemedStyles((t) => ({
     root: {
       flex: 1,
-      paddingHorizontal: 20,
-      paddingTop: 20,
+      paddingHorizontal: t.spacing.md,
+      paddingTop: t.spacing.md,
     },
     header: {
       flexDirection: 'row' as const,
       justifyContent: 'space-between' as const,
       alignItems: 'center' as const,
       marginBottom: t.spacing.lg,
-      marginTop: 10,
+      marginTop: t.spacing.sm,
     },
     subtitle: {
       marginTop: t.spacing.xs,
     },
     inputContainer: {
       flexDirection: 'row' as const,
-      marginBottom: 20,
+      marginBottom: t.spacing.md,
+      alignItems: 'center' as const,
     },
     input: {
       flex: 1,
       borderWidth: 1,
-      padding: 14,
-      borderRadius: t.radius.sm,
+      paddingVertical: t.spacing.sm + t.spacing.xs,
+      paddingHorizontal: t.spacing.md,
+      borderRadius: t.radius.lg,
       fontSize: t.fontSize.md,
-      marginRight: 10,
+      marginRight: t.spacing.sm,
+      minHeight: t.size.controlHeight,
     },
     addButton: {
       width: t.size.iconButton,
-      borderRadius: t.radius.sm,
+      height: t.size.iconButton,
+      borderRadius: t.radius.full,
       justifyContent: 'center' as const,
       alignItems: 'center' as const,
     },
+    addButtonLabel: {
+      fontSize: t.fontSize.xl,
+    },
     listContainer: {
-      paddingBottom: 20,
+      paddingBottom: t.spacing.lg,
     },
     emptyText: {
       textAlign: 'center' as const,
@@ -68,18 +75,29 @@ export default function Home() {
       justifyContent: 'space-between' as const,
       alignItems: 'center' as const,
       padding: t.spacing.md,
-      borderRadius: t.radius.sm,
+      borderRadius: t.radius.lg,
       borderWidth: 1,
-      marginBottom: 12,
+      marginBottom: t.spacing.sm,
     },
     todoTextContainer: {
       flex: 1,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+    },
+    completeMark: {
+      marginRight: t.spacing.sm,
     },
     todoCompleted: {
       textDecorationLine: 'line-through' as const,
     },
     deleteButton: {
-      padding: 6,
+      padding: t.spacing.sm,
+      minHeight: t.size.touchMin,
+      justifyContent: 'center' as const,
+    },
+    deleteLabel: {
+      fontSize: t.fontSize.sm,
+      fontWeight: t.fontWeight.semibold,
     },
   }));
 
@@ -116,7 +134,7 @@ export default function Home() {
       <View style={styles.header}>
         <View>
           <AppText variant="title" style={{ fontSize: theme.fontSize.xl }}>
-            Daftar Tugas 📝
+            Daftar Tugas
           </AppText>
           <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
             Kelola produktivitas harianmu
@@ -154,7 +172,11 @@ export default function Home() {
             },
           ]}
         >
-          <AppText variant="title" color="onPrimary" style={{ fontSize: 24 }}>
+          <AppText
+            variant="title"
+            color="onPrimary"
+            style={styles.addButtonLabel}
+          >
             +
           </AppText>
         </Pressable>
@@ -191,10 +213,17 @@ export default function Home() {
             >
               <AppText
                 variant="body"
+                color={item.isCompleted ? 'primary' : 'textMuted'}
+                style={styles.completeMark}
+              >
+                {item.isCompleted ? '✓' : '○'}
+              </AppText>
+              <AppText
+                variant="body"
                 color={item.isCompleted ? 'textMuted' : 'text'}
                 style={item.isCompleted ? styles.todoCompleted : undefined}
               >
-                {item.isCompleted ? '✅ ' : '⬜ '} {item.text}
+                {item.text}
               </AppText>
             </Pressable>
 
@@ -203,13 +232,9 @@ export default function Home() {
               style={styles.deleteButton}
               accessibilityRole="button"
               accessibilityLabel="Hapus tugas"
-              hitSlop={8}
+              hitSlop={theme.spacing.sm}
             >
-              <AppText
-                variant="link"
-                color="error"
-                style={{ fontWeight: '700' }}
-              >
+              <AppText variant="link" color="error" style={styles.deleteLabel}>
                 Hapus
               </AppText>
             </Pressable>
