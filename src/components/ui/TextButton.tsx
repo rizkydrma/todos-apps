@@ -1,6 +1,6 @@
 /**
  * Tombol teks (link-style) — mis. "Belum punya akun? Daftar di sini".
- * Bukan solid button; min height touch target + hitSlop untuk mudah ditekan.
+ * Setara plain HIG text action; min height touch target + hitSlop.
  */
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { Pressable, type PressableProps } from 'react-native';
@@ -10,6 +10,9 @@ export type TextButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   title: string;
 };
 
+/**
+ * Pressable teks primary. Bukan solid button.
+ */
 export function TextButton({
   title,
   disabled,

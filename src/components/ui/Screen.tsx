@@ -2,12 +2,11 @@
  * Layout layar standar: background tema + opsi keyboard / scroll / safe area.
  *
  * Props penting:
+ * - background: systemBackground (default) | systemGroupedBackground (home)
  * - keyboard: KeyboardAvoidingView (iOS padding)
  * - scroll: ScrollView untuk form panjang
  * - dismissKeyboardOnPress: tap di luar input menutup keyboard
  * - safe: padding notch/home indicator (bool atau per-sisi)
- *
- * Dipakai di login/register supaya layout form konsisten.
  */
 import { useAppTheme } from '@/context/ThemeContext';
 import {
@@ -23,6 +22,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+export type ScreenBackground = 'systemBackground' | 'systemGroupedBackground';
+
 export type ScreenProps = {
   children: React.ReactNode;
   /** Bungkus dengan KeyboardAvoidingView. */
@@ -35,6 +36,8 @@ export type ScreenProps = {
   safe?:
     | boolean
     | { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean };
+  /** Role background HIG. Default systemBackground. */
+  background?: ScreenBackground;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
 };
@@ -48,13 +51,13 @@ export function Screen({
   scroll = false,
   dismissKeyboardOnPress = false,
   safe = false,
+  background = 'systemBackground',
   style,
   contentStyle,
 }: ScreenProps) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
 
-  // Normalisasi prop safe → config booleans per sisi
   const safeConfig =
     safe === true
       ? { top: true, bottom: true, left: true, right: true }
@@ -74,7 +77,6 @@ export function Screen({
     paddingRight: safeConfig.right ? insets.right : undefined,
   };
 
-  // Konten: scrollable atau View biasa
   const content = scroll ? (
     <ScrollView
       keyboardShouldPersistTaps="handled"
@@ -87,7 +89,6 @@ export function Screen({
     <View style={[styles.flex, contentStyle]}>{children}</View>
   );
 
-  // Opsional: tap di luar field menutup keyboard
   const body = dismissKeyboardOnPress ? (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       {content}
@@ -98,7 +99,7 @@ export function Screen({
 
   const rootStyle = [
     styles.flex,
-    { backgroundColor: theme.colors.background },
+    { backgroundColor: theme.colors[background] },
     safePadding,
     style,
   ];

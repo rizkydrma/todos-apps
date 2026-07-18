@@ -5,7 +5,7 @@
  * - Submit → useVerifyEmail → commitSession → home
  * - Resend → useResendVerification + cooldown lokal 60 detik
  */
-import { Button, Screen, TextButton, TextField } from '@/components/ui';
+import { Button, OtpInput, Screen, TextButton } from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
 import { authCopy } from '@/features/auth/auth-copy';
 import { useResendVerification } from '@/features/auth/hooks/useResendVerification';
@@ -92,7 +92,7 @@ export default function VerifyEmailScreen() {
     return (
       <Screen safe={{ top: true, bottom: true }} contentStyle={styles.content}>
         <AppText variant="title">{authCopy.verify.title}</AppText>
-        <AppText variant="body" color="textMuted" style={styles.subtitle}>
+        <AppText variant="body" color="secondaryLabel" style={styles.subtitle}>
           {authCopy.verify.missingEmail}
         </AppText>
         <TextButton
@@ -113,23 +113,22 @@ export default function VerifyEmailScreen() {
     >
       <View style={styles.header}>
         <AppText variant="title">{authCopy.verify.title}</AppText>
-        <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
+        <AppText
+          variant="subtitle"
+          color="secondaryLabel"
+          style={styles.subtitle}
+        >
           {authCopy.verify.subtitle(email)}
         </AppText>
       </View>
 
       <View>
-        <TextField
+        <OtpInput
           control={control}
           name="code"
-          placeholder={authCopy.verify.codeLabel}
+          length={6}
           error={errors.code?.message}
-          keyboardType="number-pad"
-          autoCapitalize="none"
-          autoComplete="one-time-code"
-          textContentType="oneTimeCode"
-          maxLength={6}
-          returnKeyType="go"
+          accessibilityLabel={authCopy.verify.codeLabel}
           onSubmitEditing={handleSubmit(onSubmit)}
         />
 
@@ -147,7 +146,7 @@ export default function VerifyEmailScreen() {
               ? authCopy.verify.resendCooldown(cooldown)
               : authCopy.verify.resend
           }
-          variant="ghost"
+          variant="plain"
           onPress={onResend}
           disabled={cooldown > 0 || resend.isPending || verifyEmail.isPending}
           loading={resend.isPending}

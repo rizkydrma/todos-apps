@@ -1,6 +1,6 @@
 /**
  * Helper mengekstrak pesan / kode error ramah-user dari error Axios / Error biasa.
- * Dipakai di hook login/register/Google/verify agar Alert menampilkan pesan backend.
+ * Dipakai di hook login/register/Google/verify agar toast menampilkan pesan backend.
  */
 import { isAxiosError } from 'axios';
 

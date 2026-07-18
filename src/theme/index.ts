@@ -1,10 +1,11 @@
 /**
- * Entry theme: gabungkan colors + tokens + typography menjadi lightTheme / darkTheme.
+ * Entry theme: colors + tokens + typography + motion → lightTheme / darkTheme.
  *
  * ThemeProvider memilih lightTheme atau darkTheme.
  * Export type re-export supaya consumer bisa `import type { Theme } from '@/theme'`.
  */
 import { darkColors, lightColors, type SemanticColors } from './colors';
+import { motion, type MotionTokens } from './motion';
 import {
   fontSize,
   fontWeight,
@@ -27,6 +28,7 @@ export type Theme = {
   fontWeight: typeof fontWeight;
   size: typeof size;
   typography: TypographyStyles;
+  motion: MotionTokens;
   elevation: typeof getElevation;
 };
 
@@ -41,6 +43,7 @@ function createTheme(mode: ThemeMode, colors: SemanticColors): Theme {
     fontWeight,
     size,
     typography,
+    motion,
     elevation: getElevation,
   };
 }
@@ -51,4 +54,7 @@ export const darkTheme = createTheme('dark', darkColors);
 export type { ColorRole, SemanticColors } from './colors';
 export type { TextVariant, TypographyStyles } from './typography';
 export type { FontSize, Radius, Spacing } from './tokens';
+export type { MotionTokens, SpringPreset } from './motion';
 export { getElevation } from './tokens';
+export { motion, projectVelocity, rubberband, springConfig } from './motion';
+export { SYSTEM_COLOR_PIN } from './systemColors.ios18';

@@ -1,6 +1,6 @@
 /**
  * String UI auth berbahasa Indonesia (terpusat, tanpa i18n framework).
- * Dipakai di verify-email screen, hook register/login/Google, Alert error codes.
+ * Dipakai di verify-email screen, hook register/login/Google, toast error codes.
  */
 
 export const authCopy = {
@@ -21,7 +21,7 @@ export const authCopy = {
     backToLogin: 'Kembali ke login',
   },
 
-  /** Alert / pesan resend OTP. */
+  /** Toast / pesan resend OTP. */
   resend: {
     successTitle: 'Kode dikirim',
     successBody:
@@ -32,7 +32,7 @@ export const authCopy = {
     failTitle: 'Gagal kirim ulang',
   },
 
-  /** Alert verifikasi gagal / sukses path lewat hook. */
+  /** Toast verifikasi gagal / sukses path lewat hook. */
   verifyAlert: {
     failTitle: 'Verifikasi gagal',
   },

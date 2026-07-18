@@ -1,73 +1,54 @@
 /**
- * Palet warna semantik (light + dark) ala X/Twitter.
- *
- * - `palette`: hex mentah, hanya dipakai di file ini
- * - `lightColors` / `darkColors`: role semantik (background, primary, error, …)
- *
+ * Semantic colors for the app: full HIG system set + thin app aliases.
+ * Hex lives only here and in systemColors.ios18.ts.
  * Komponen UI harus pakai theme.colors.*, jangan hardcode hex di screen.
  */
+import {
+  systemColorsDark,
+  systemColorsLight,
+  type SystemColorModeMap,
+} from './systemColors.ios18';
 
-/** Hex mentah — internal module theme saja. */
-const palette = {
-  white: '#FFFFFF',
-  black: '#000000',
-  // Netral ala X
-  gray50: '#F7F9F9',
-  gray100: '#EFF3F4',
-  gray400: '#536471',
-  gray500: '#71767B',
-  gray700: '#2F3336',
-  gray800: '#16181C',
-  textDark: '#0F1419',
-  textLight: '#E7E9EA',
-  // Biru X + solid disabled (RN tidak selalu bagus dengan opacity di background)
-  blue: '#1D9BF0',
-  blueDisabledDark: '#0D4F7A',
-  blueDisabledLight: '#8ECDF8',
-  red: '#F4212E',
-} as const;
-
-/** Role warna yang dipakai komponen (bukan nama hex). */
-export type SemanticColors = {
-  background: string;
-  surface: string;
-  text: string;
-  textMuted: string;
-  border: string;
+/** App-only aliases (bukan nama UIColor). */
+export type AppColorAliases = {
   primary: string;
   primaryDisabled: string;
   onPrimary: string;
-  error: string;
+  destructive: string;
+  /** Scrim untuk toast/modal dimming */
+  overlay: string;
+  /** iOS shadowColor baseline */
   shadow: string;
 };
 
+export type SemanticColors = SystemColorModeMap & AppColorAliases;
+
+export type ColorRole = keyof SemanticColors;
+
+function withAliases(
+  system: SystemColorModeMap,
+  aliases: AppColorAliases
+): SemanticColors {
+  return { ...system, ...aliases };
+}
+
 /** Mapping role → hex untuk light mode. */
-export const lightColors: SemanticColors = {
-  background: palette.white,
-  surface: palette.gray50,
-  text: palette.textDark,
-  textMuted: palette.gray400,
-  border: palette.gray100,
-  primary: palette.blue,
-  primaryDisabled: palette.blueDisabledLight,
-  onPrimary: palette.white,
-  error: palette.red,
-  shadow: palette.black,
-};
+export const lightColors: SemanticColors = withAliases(systemColorsLight, {
+  primary: systemColorsLight.systemBlue,
+  // Solid disabled blues (RN backgrounds kurang bagus dengan opacity-only)
+  primaryDisabled: '#99C9FF',
+  onPrimary: '#FFFFFF',
+  destructive: systemColorsLight.systemRed,
+  overlay: '#00000066',
+  shadow: '#000000',
+});
 
 /** Mapping role → hex untuk dark mode. */
-export const darkColors: SemanticColors = {
-  background: palette.black,
-  surface: palette.gray800,
-  text: palette.textLight,
-  textMuted: palette.gray500,
-  border: palette.gray700,
-  primary: palette.blue,
-  primaryDisabled: palette.blueDisabledDark,
-  onPrimary: palette.white,
-  error: palette.red,
-  shadow: palette.black,
-};
-
-/** Nama role warna (untuk AppText color prop, dll). */
-export type ColorRole = keyof SemanticColors;
+export const darkColors: SemanticColors = withAliases(systemColorsDark, {
+  primary: systemColorsDark.systemBlue,
+  primaryDisabled: '#0A3D7A',
+  onPrimary: '#FFFFFF',
+  destructive: systemColorsDark.systemRed,
+  overlay: '#00000099',
+  shadow: '#000000',
+});

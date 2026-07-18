@@ -1,19 +1,30 @@
 /**
- * Context tema light/dark untuk seluruh app.
+ * Theme context: system light/dark default + session-only override (ADR-0004).
  *
- * - isDarkMode: boolean mode aktif
- * - theme: objek Theme (warna, spacing, typography, dll)
- * - toggleTheme: bolak-balik light ↔ dark
+ * - theme: objek Theme (warna, spacing, typography, motion, dll)
+ * - isDarkMode: mode ter-resolve
+ * - override: null = ikuti system; light/dark = override sesi
+ * - toggleTheme: flip override sesi (tidak di-persist)
  *
- * Default saat ini: dark mode.
  * useThemedStyles / AppText / Button membaca theme lewat useAppTheme().
  */
 import { darkTheme, lightTheme, type Theme } from '@/theme';
-import { createContext, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
+import { useColorScheme } from 'react-native';
+
+type ThemeOverride = 'light' | 'dark' | null;
 
 type ThemeContextType = {
-  isDarkMode: boolean;
   theme: Theme;
+  isDarkMode: boolean;
+  /** null = mengikuti system appearance */
+  override: ThemeOverride;
   toggleTheme: () => void;
 };
 
@@ -21,19 +32,31 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 /**
  * Provider tema — bungkus di root layout (di dalam SafeAreaProvider).
- * State isDarkMode di-hold di sini; value di-memo agar consumer tidak re-render sia-sia.
+ * Default: OS color scheme. Toggle = override sesi sampai process death.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // true = dark (default app)
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const systemScheme = useColorScheme(); // 'light' | 'dark' | null
+  const [override, setOverride] = useState<ThemeOverride>(null);
+
+  // Override menang; null system → fallback light bila scheme unknown
+  const resolvedMode: 'light' | 'dark' =
+    override ?? (systemScheme === 'dark' ? 'dark' : 'light');
+
+  const toggleTheme = useCallback(() => {
+    setOverride((prev) => {
+      const current = prev ?? (systemScheme === 'dark' ? 'dark' : 'light');
+      return current === 'dark' ? 'light' : 'dark';
+    });
+  }, [systemScheme]);
 
   const value = useMemo<ThemeContextType>(
     () => ({
-      isDarkMode,
-      theme: isDarkMode ? darkTheme : lightTheme,
-      toggleTheme: () => setIsDarkMode((prev) => !prev),
+      theme: resolvedMode === 'dark' ? darkTheme : lightTheme,
+      isDarkMode: resolvedMode === 'dark',
+      override,
+      toggleTheme,
     }),
-    [isDarkMode]
+    [resolvedMode, override, toggleTheme]
   );
 
   return (

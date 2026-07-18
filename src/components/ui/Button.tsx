@@ -1,21 +1,30 @@
 /**
- * Tombol primer UI (primary / ghost / danger).
+ * Tombol HIG (filled / tinted / gray / plain / destructive).
  *
- * - loading: tampil spinner, nonaktifkan press
- * - disabled atau loading → isDisabled
- * - Warna dari theme (primary, error, primaryDisabled)
+ * - loading: spinner, nonaktifkan press
+ * - Press: scale spring (Reanimated); reduced-motion → opacity saja
+ * - Continuous radius (lg), bukan pill X-style
  */
 import { useAppTheme } from '@/context/ThemeContext';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
+import { springConfig } from '@/theme';
 import {
   ActivityIndicator,
   Pressable,
   type PressableProps,
   ViewStyle,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { AppText } from './AppText';
 
-export type ButtonVariant = 'primary' | 'ghost' | 'danger';
+export type ButtonVariant =
+  'filled' | 'tinted' | 'gray' | 'plain' | 'destructive';
 
 export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   title: string;
@@ -25,12 +34,14 @@ export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   style?: ViewStyle | ViewStyle[];
 };
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 /**
- * Pressable berbentuk pill. Pakai title string, bukan children bebas.
+ * Pressable HIG. Pakai title string, bukan children bebas.
  */
 export function Button({
   title,
-  variant = 'primary',
+  variant = 'filled',
   disabled,
   loading = false,
   onPress,
@@ -38,16 +49,20 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const { theme } = useAppTheme();
+  const reducedMotion = useReducedMotion();
+  const scale = useSharedValue(1);
+  const pressOpacity = useSharedValue(1);
+
   const styles = useThemedStyles((t) => ({
     base: {
-      paddingVertical: t.spacing.md,
+      paddingVertical: t.spacing.sm + 2,
       paddingHorizontal: t.spacing.lg,
-      borderRadius: t.radius.full,
+      borderRadius: t.radius.lg,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       minHeight: t.size.controlHeight,
     },
-    ghost: {
+    plain: {
       backgroundColor: 'transparent',
       paddingVertical: t.spacing.sm,
     },
@@ -55,46 +70,78 @@ export function Button({
 
   const isDisabled = Boolean(disabled || loading);
 
-  // Pilih background per variant + state disabled
   const backgroundColor = (() => {
-    if (variant === 'ghost') return 'transparent';
-    if (variant === 'danger') return theme.colors.error;
+    if (variant === 'plain') return 'transparent';
+    if (variant === 'tinted') return theme.colors.secondarySystemFill;
+    if (variant === 'gray') return theme.colors.tertiarySystemFill;
+    if (variant === 'destructive') return theme.colors.destructive;
     if (isDisabled) return theme.colors.primaryDisabled;
     return theme.colors.primary;
   })();
 
-  // Warna label: ghost pakai primary text; solid pakai onPrimary (putih di atas biru/merah)
-  const textColor =
-    variant === 'ghost'
-      ? 'primary'
-      : variant === 'danger'
-        ? 'onPrimary'
-        : 'onPrimary';
+  const textColor = (() => {
+    if (variant === 'plain' || variant === 'tinted') return 'primary' as const;
+    if (variant === 'gray') return 'label' as const;
+    return 'onPrimary' as const;
+  })();
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: pressOpacity.value,
+  }));
+
+  const spring = springConfig(theme.motion.spring.snappy);
+  const pressScale = theme.motion.press.scale;
+  const pressOpacityTarget = theme.motion.press.opacity;
+  const fastMs = theme.motion.duration.fast;
+
+  const handlePressIn = () => {
+    if (isDisabled) return;
+    if (reducedMotion) {
+      // Reanimated shared values — mutasi .value sengaja (bukan React state)
+      pressOpacity.set(withTiming(pressOpacityTarget, { duration: fastMs }));
+      return;
+    }
+    scale.set(withSpring(pressScale, spring));
+  };
+
+  const handlePressOut = () => {
+    if (reducedMotion) {
+      pressOpacity.set(withTiming(1, { duration: fastMs }));
+      return;
+    }
+    scale.set(withSpring(1, spring));
+  };
+
+  const spinnerColor =
+    variant === 'plain' || variant === 'tinted' || variant === 'gray'
+      ? theme.colors.primary
+      : theme.colors.onPrimary;
 
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[
         styles.base,
-        variant === 'ghost' && styles.ghost,
-        {
-          backgroundColor,
-          opacity: pressed && !isDisabled ? 0.85 : 1,
-        },
+        variant === 'plain' && styles.plain,
+        { backgroundColor },
+        animatedStyle,
         style,
       ]}
       {...rest}
     >
       {loading ? (
-        <ActivityIndicator color={theme.colors.onPrimary} />
+        <ActivityIndicator color={spinnerColor} />
       ) : (
         <AppText variant="label" color={textColor}>
           {title}
         </AppText>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }

@@ -77,7 +77,11 @@ export default function RegisterScreen() {
     >
       <View style={styles.logoContainer}>
         <AppText variant="title">Buat Akun</AppText>
-        <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
+        <AppText
+          variant="subtitle"
+          color="secondaryLabel"
+          style={styles.subtitle}
+        >
           Gabung bersama sekarang
         </AppText>
       </View>

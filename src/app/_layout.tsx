@@ -12,6 +12,7 @@
  * Docs: https://docs.expo.dev/router/advanced/authentication/
  *       https://docs.expo.dev/router/advanced/protected/
  */
+import { ToastHost } from '@/components/ui';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -35,12 +36,12 @@ function NavigationLayout() {
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: theme.colors.background,
+          backgroundColor: theme.colors.systemBackground,
         }}
       >
         <StatusBar
           barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-          backgroundColor={theme.colors.background}
+          backgroundColor={theme.colors.systemBackground}
         />
         <ActivityIndicator />
       </View>
@@ -48,19 +49,19 @@ function NavigationLayout() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.systemBackground }}>
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={theme.colors.background}
+        backgroundColor={theme.colors.systemBackground}
       />
 
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.text,
+          headerStyle: { backgroundColor: theme.colors.systemBackground },
+          headerTintColor: theme.colors.label,
           headerShadowVisible: false,
           headerTitleStyle: { fontWeight: '700' },
-          contentStyle: { backgroundColor: theme.colors.background },
+          contentStyle: { backgroundColor: theme.colors.systemBackground },
         }}
       >
         {/* Area privat: hanya setelah login / session valid */}
@@ -94,6 +95,8 @@ export default function RootLayout() {
         <ThemeProvider>
           <AuthProvider>
             <NavigationLayout />
+            {/* Toast di atas stack; butuh Theme + SafeArea di parent */}
+            <ToastHost />
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>

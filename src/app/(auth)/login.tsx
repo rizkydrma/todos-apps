@@ -67,7 +67,11 @@ export default function LoginScreen() {
 
         <View style={styles.logoContainer}>
           <AppText variant="title">Just Todos</AppText>
-          <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
+          <AppText
+            variant="subtitle"
+            color="secondaryLabel"
+            style={styles.subtitle}
+          >
             Silahkan masuk ke akun Anda
           </AppText>
         </View>

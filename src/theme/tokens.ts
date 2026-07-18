@@ -3,6 +3,7 @@
  * Tidak bergantung light/dark — digabung ke Theme di theme/index.ts.
  *
  * Pakai token (t.spacing.md) di style, jangan magic number acak.
+ * Continuous HIG controls: radius.lg/xl; full hanya untuk lingkaran.
  */
 import { Platform, ViewStyle } from 'react-native';
 
@@ -17,11 +18,12 @@ export const spacing = {
   xxl: 40,
 } as const;
 
-/** Border radius standar. full = pill/circle. */
+/** Border radius standar. full = circle/pill (icon only). */
 export const radius = {
   sm: 8,
-  md: 12,
-  lg: 16,
+  md: 10,
+  lg: 12,
+  xl: 16,
   full: 9999,
 } as const;
 
@@ -48,9 +50,9 @@ export const size = {
   /** Minimum touch target yang nyaman (~44pt Apple HIG). */
   touchMin: 44,
   /** Tinggi baseline tombol/input. */
-  controlHeight: 48,
+  controlHeight: 50,
   /** Tombol kotak/ikon (mis. + tambah todo). */
-  iconButton: 50,
+  iconButton: 44,
 } as const;
 
 type ElevationLevel = 'none' | 'sm' | 'md';

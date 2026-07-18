@@ -8,7 +8,7 @@
  * 4. POST /auth/google dengan token Firebase (bukan raw Google OAuth)
  * 5. commitSession + navigate home
  *
- * 409 EMAIL_REGISTERED_USE_PASSWORD | IDENTITY_CONFLICT → Alert jelas (auth-copy).
+ * 409 EMAIL_REGISTERED_USE_PASSWORD | IDENTITY_CONFLICT → toast jelas (auth-copy).
  * webClientId di configure() harus Web client dari Google Cloud Console.
  */
 import { useAuth } from '@/context/AuthContext';
@@ -17,6 +17,7 @@ import { authCopy, messageForAuthCode } from '@/features/auth/auth-copy';
 import type { AuthSession } from '@/features/auth/types';
 import { getApiErrorCode, getApiErrorMessage } from '@/lib/api-error';
 import { auth } from '@/lib/firebase';
+import { toast } from '@/lib/toast';
 import {
   GoogleSignin,
   isErrorWithCode,
@@ -26,7 +27,6 @@ import {
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { Alert } from 'react-native';
 
 // Konfigurasi sekali di load module (webClientId = OAuth Web client)
 GoogleSignin.configure({
@@ -70,17 +70,17 @@ export const useGoogleSignIn = () => {
     },
 
     onError: (error: Error) => {
-      // User cancel / masih proses → jangan tampil Alert
+      // User cancel / masih proses → jangan tampil toast
       if (isErrorWithCode(error)) {
         switch (error.code) {
           case statusCodes.SIGN_IN_CANCELLED:
           case statusCodes.IN_PROGRESS:
             return;
           case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            Alert.alert(
-              authCopy.google.failTitle,
-              authCopy.google.playServices
-            );
+            toast.error({
+              title: authCopy.google.failTitle,
+              message: authCopy.google.playServices,
+            });
             return;
           default:
             break;
@@ -93,20 +93,21 @@ export const useGoogleSignIn = () => {
         code === 'EMAIL_REGISTERED_USE_PASSWORD' ||
         code === 'IDENTITY_CONFLICT'
       ) {
-        Alert.alert(
-          authCopy.google.failTitle,
-          messageForAuthCode(code) ??
+        toast.error({
+          title: authCopy.google.failTitle,
+          message:
+            messageForAuthCode(code) ??
             (code === 'EMAIL_REGISTERED_USE_PASSWORD'
               ? authCopy.google.emailRegisteredUsePassword
-              : authCopy.google.identityConflict)
-        );
+              : authCopy.google.identityConflict),
+        });
         return;
       }
 
-      Alert.alert(
-        authCopy.google.failTitle,
-        messageForAuthCode(code) ?? getApiErrorMessage(error)
-      );
+      toast.error({
+        title: authCopy.google.failTitle,
+        message: messageForAuthCode(code) ?? getApiErrorMessage(error),
+      });
     },
   });
 };

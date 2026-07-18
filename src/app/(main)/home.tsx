@@ -3,22 +3,25 @@
  *
  * Fitur:
  * - Tambah / centang selesai / hapus todo
+ * - Inset grouped list (HIG) di systemGroupedBackground
  * - Header: sapaan user, logout, ThemeToggle
- * - Style lewat useThemedStyles (ikut light/dark)
+ * - SF Symbols chrome + commit haptics
  *
  * Catatan: todos hilang saat app restart (belum persist/backend).
  */
-import { AppText, ThemeToggle } from '@/components/ui';
+import { AppText, Screen, ThemeToggle } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
+import { hapticCommit } from '@/lib/haptics';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { SymbolView } from 'expo-symbols';
+import { useCallback, useState } from 'react';
 import {
   FlatList,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
+  StyleSheet,
   TextInput,
   View,
 } from 'react-native';
@@ -37,7 +40,6 @@ export default function Home() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [inputText, setInputText] = useState('');
 
-  // Style bergantung theme — recompute saat toggle light/dark
   const styles = useThemedStyles((t) => ({
     root: {
       flex: 1,
@@ -65,20 +67,25 @@ export default function Home() {
     subtitle: {
       marginTop: t.spacing.xs,
     },
-    inputContainer: {
-      flexDirection: 'row' as const,
+    group: {
+      backgroundColor: t.colors.secondarySystemGroupedBackground,
+      borderRadius: t.radius.xl,
+      overflow: 'hidden' as const,
       marginBottom: t.spacing.md,
+    },
+    composerRow: {
+      flexDirection: 'row' as const,
       alignItems: 'center' as const,
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.sm,
+      minHeight: t.size.controlHeight,
     },
     input: {
       flex: 1,
-      borderWidth: 1,
-      paddingVertical: t.spacing.sm + t.spacing.xs,
-      paddingHorizontal: t.spacing.md,
-      borderRadius: t.radius.lg,
       fontSize: t.fontSize.md,
-      marginRight: t.spacing.sm,
-      minHeight: t.size.controlHeight,
+      paddingVertical: Platform.OS === 'ios' ? t.spacing.sm : t.spacing.xs,
+      paddingRight: t.spacing.sm,
+      color: t.colors.label,
     },
     addButton: {
       width: t.size.iconButton,
@@ -86,45 +93,57 @@ export default function Home() {
       borderRadius: t.radius.full,
       justifyContent: 'center' as const,
       alignItems: 'center' as const,
+      backgroundColor: t.colors.primary,
     },
-    addButtonLabel: {
-      fontSize: t.fontSize.xl,
-    },
-    listContainer: {
+    listContent: {
       paddingBottom: t.spacing.lg,
+      flexGrow: 1,
     },
     emptyText: {
       textAlign: 'center' as const,
       marginTop: t.spacing.xxl,
+      paddingHorizontal: t.spacing.lg,
     },
-    todoItem: {
+    todoRow: {
       flexDirection: 'row' as const,
       justifyContent: 'space-between' as const,
       alignItems: 'center' as const,
-      padding: t.spacing.md,
-      borderRadius: t.radius.lg,
-      borderWidth: 1,
-      marginBottom: t.spacing.sm,
+      paddingVertical: t.spacing.md,
+      paddingHorizontal: t.spacing.md,
+      minHeight: t.size.touchMin,
+      backgroundColor: t.colors.secondarySystemGroupedBackground,
+    },
+    firstRow: {
+      borderTopLeftRadius: t.radius.xl,
+      borderTopRightRadius: t.radius.xl,
+    },
+    lastRow: {
+      borderBottomLeftRadius: t.radius.xl,
+      borderBottomRightRadius: t.radius.xl,
+      marginBottom: t.spacing.md,
+    },
+    onlyRow: {
+      borderRadius: t.radius.xl,
+      marginBottom: t.spacing.md,
     },
     todoTextContainer: {
       flex: 1,
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
-    },
-    completeMark: {
-      marginRight: t.spacing.sm,
+      gap: t.spacing.sm,
     },
     todoCompleted: {
       textDecorationLine: 'line-through' as const,
+    },
+    separator: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: t.colors.separator,
+      marginLeft: t.spacing.md + 28,
     },
     deleteButton: {
       padding: t.spacing.sm,
       minHeight: t.size.touchMin,
       justifyContent: 'center' as const,
-    },
-    deleteLabel: {
-      fontSize: t.fontSize.sm,
-      fontWeight: t.fontWeight.semibold,
     },
   }));
 
@@ -142,19 +161,21 @@ export default function Home() {
     setInputText('');
   };
 
-  /** Toggle checklist selesai / belum. */
-  const toggleTodoComplete = (id: string) => {
+  /** Toggle checklist selesai / belum + haptic commit. */
+  const toggleTodoComplete = useCallback((id: string) => {
+    void hapticCommit('light');
     setTodos((prevTodos) =>
       prevTodos.map((todo) =>
         todo.id === id ? { ...todo, isCompleted: !todo.isCompleted } : todo
       )
     );
-  };
+  }, []);
 
-  /** Hapus satu todo dari list. */
-  const deleteTodo = (id: string) => {
+  /** Hapus satu todo + haptic warning. */
+  const deleteTodo = useCallback((id: string) => {
+    void hapticCommit('warning');
     setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
-  };
+  }, []);
 
   /** Logout lalu ganti stack ke login (replace agar back tidak ke home). */
   const handleSignOut = async () => {
@@ -162,17 +183,18 @@ export default function Home() {
     router.replace('/(auth)/login');
   };
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[styles.root, { backgroundColor: theme.colors.background }]}
-    >
+  const listHeader = (
+    <>
       <View style={styles.header}>
         <View>
           <AppText variant="title" style={{ fontSize: theme.fontSize.xl }}>
             Daftar Tugas
           </AppText>
-          <AppText variant="subtitle" color="textMuted" style={styles.subtitle}>
+          <AppText
+            variant="subtitle"
+            color="secondaryLabel"
+            style={styles.subtitle}
+          >
             {user?.name
               ? `Halo, ${user.name}`
               : 'Kelola produktivitas harianmu'}
@@ -186,7 +208,7 @@ export default function Home() {
             accessibilityLabel="Keluar"
             hitSlop={theme.spacing.sm}
           >
-            <AppText variant="link" color="error">
+            <AppText variant="link" color="destructive">
               Keluar
             </AppText>
           </Pressable>
@@ -194,106 +216,129 @@ export default function Home() {
         </View>
       </View>
 
-      {/* Input + tombol tambah */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          placeholder="Tambah tugas baru..."
-          placeholderTextColor={theme.colors.textMuted}
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
-              color: theme.colors.text,
-            },
-          ]}
-          value={inputText}
-          onChangeText={setInputText}
-          onSubmitEditing={addTodo}
-          returnKeyType="done"
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Tambah tugas"
-          onPress={addTodo}
-          style={({ pressed }) => [
-            styles.addButton,
-            {
-              backgroundColor: theme.colors.primary,
-              opacity: pressed ? 0.9 : 1,
-            },
-          ]}
-        >
-          <AppText
-            variant="title"
-            color="onPrimary"
-            style={styles.addButtonLabel}
+      <View style={styles.group}>
+        <View style={styles.composerRow}>
+          <TextInput
+            placeholder="Tambah tugas baru..."
+            placeholderTextColor={theme.colors.placeholderText}
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            onSubmitEditing={addTodo}
+            returnKeyType="done"
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Tambah tugas"
+            onPress={addTodo}
+            style={({ pressed }) => [
+              styles.addButton,
+              { opacity: pressed ? theme.motion.press.opacity : 1 },
+            ]}
           >
-            +
-          </AppText>
-        </Pressable>
+            <SymbolView
+              name="plus"
+              size={theme.fontSize.lg}
+              tintColor={theme.colors.onPrimary}
+              fallback={
+                <AppText
+                  color="onPrimary"
+                  style={{ fontSize: theme.fontSize.xl }}
+                >
+                  +
+                </AppText>
+              }
+            />
+          </Pressable>
+        </View>
       </View>
+    </>
+  );
 
-      {/* Daftar todo */}
+  return (
+    <Screen
+      background="systemGroupedBackground"
+      keyboard
+      safe={{ top: true, bottom: true }}
+      contentStyle={styles.root}
+    >
       <FlatList
         data={todos}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={listHeader}
         ListEmptyComponent={
           <AppText
             variant="subtitle"
-            color="textMuted"
+            color="secondaryLabel"
             style={styles.emptyText}
           >
             Belum ada tugas hari ini. Santai dulu!
           </AppText>
         }
-        renderItem={({ item }) => (
-          <View
-            style={[
-              styles.todoItem,
-              {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
-            <Pressable
-              onPress={() => toggleTodoComplete(item.id)}
-              style={styles.todoTextContainer}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: item.isCompleted }}
-            >
-              <AppText
-                variant="body"
-                color={item.isCompleted ? 'primary' : 'textMuted'}
-                style={styles.completeMark}
-              >
-                {item.isCompleted ? '✓' : '○'}
-              </AppText>
-              <AppText
-                variant="body"
-                color={item.isCompleted ? 'textMuted' : 'text'}
-                style={item.isCompleted ? styles.todoCompleted : undefined}
-              >
-                {item.text}
-              </AppText>
-            </Pressable>
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        renderItem={({ item, index }) => {
+          const isFirst = index === 0;
+          const isLast = index === todos.length - 1;
+          const isOnly = isFirst && isLast;
 
-            <Pressable
-              onPress={() => deleteTodo(item.id)}
-              style={styles.deleteButton}
-              accessibilityRole="button"
-              accessibilityLabel="Hapus tugas"
-              hitSlop={theme.spacing.sm}
+          return (
+            <View
+              style={[
+                styles.todoRow,
+                isOnly && styles.onlyRow,
+                !isOnly && isFirst && styles.firstRow,
+                !isOnly && isLast && styles.lastRow,
+              ]}
             >
-              <AppText variant="link" color="error" style={styles.deleteLabel}>
-                Hapus
-              </AppText>
-            </Pressable>
-          </View>
-        )}
+              <Pressable
+                onPress={() => toggleTodoComplete(item.id)}
+                style={styles.todoTextContainer}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: item.isCompleted }}
+              >
+                <SymbolView
+                  name={item.isCompleted ? 'checkmark.circle.fill' : 'circle'}
+                  size={theme.fontSize.xl}
+                  tintColor={
+                    item.isCompleted
+                      ? theme.colors.primary
+                      : theme.colors.secondaryLabel
+                  }
+                  fallback={
+                    <AppText
+                      variant="body"
+                      color={item.isCompleted ? 'primary' : 'secondaryLabel'}
+                    >
+                      {item.isCompleted ? '✓' : '○'}
+                    </AppText>
+                  }
+                />
+                <AppText
+                  variant="body"
+                  color={item.isCompleted ? 'secondaryLabel' : 'label'}
+                  style={item.isCompleted ? styles.todoCompleted : undefined}
+                >
+                  {item.text}
+                </AppText>
+              </Pressable>
+
+              <Pressable
+                onPress={() => deleteTodo(item.id)}
+                style={styles.deleteButton}
+                accessibilityRole="button"
+                accessibilityLabel="Hapus tugas"
+                hitSlop={theme.spacing.sm}
+              >
+                <AppText variant="link" color="destructive">
+                  Hapus
+                </AppText>
+              </Pressable>
+            </View>
+          );
+        }}
       />
-    </KeyboardAvoidingView>
+    </Screen>
   );
 }

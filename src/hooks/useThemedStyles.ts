@@ -7,7 +7,7 @@
  *
  * Contoh:
  *   const styles = useThemedStyles((t) => ({
- *     box: { padding: t.spacing.md, backgroundColor: t.colors.surface },
+ *     box: { padding: t.spacing.md, backgroundColor: t.colors.systemBackground },
  *   }));
  */
 import { useAppTheme } from '@/context/ThemeContext';

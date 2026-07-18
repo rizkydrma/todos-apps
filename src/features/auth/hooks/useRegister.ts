@@ -13,9 +13,9 @@ import type {
   RegisterPendingVerification,
 } from '@/features/auth/types';
 import { getApiErrorMessage } from '@/lib/api-error';
+import { toast } from '@/lib/toast';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
 
 export const useRegister = () => {
   const router = useRouter();
@@ -33,7 +33,10 @@ export const useRegister = () => {
     },
 
     onError: (error: Error) => {
-      Alert.alert(authCopy.register.failTitle, getApiErrorMessage(error));
+      toast.error({
+        title: authCopy.register.failTitle,
+        message: getApiErrorMessage(error),
+      });
     },
   });
 };
