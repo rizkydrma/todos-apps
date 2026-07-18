@@ -1,8 +1,42 @@
 # Just Todos — Design & Product Context
 
-Domain language for the Expo app’s product UI and design system. Implementation lives in `src/theme` and `src/components/ui`; this file is glossary only.
+Domain language for the Expo app’s product UI and design system. Implementation lives in `src/theme`, `src/features`, and `src/components/ui`; this file is glossary only.
 
 ## Language
+
+### Todo domain
+
+**Todo**:
+A task owned by a user: title, optional description, completion state, priority, optional due date, optional category, and zero or more tags. Identity and persistence live on the Todo Service, not on the device alone.
+_Avoid_: Task (as a synonym in this app), item (when meaning a Todo entity)
+
+**Priority**:
+Relative urgency of a Todo: `low`, `medium`, or `high` (server enum).
+_Avoid_: Importance, severity
+
+**Category**:
+A named catalog label (optional color) that groups Todos. Managed by admins; members assign/filter only.
+_Avoid_: Folder, project, list (when meaning Category)
+
+**Tag**:
+A named catalog label (optional color) that annotates Todos; a Todo may have many tags. Managed by admins; members assign/filter only.
+_Avoid_: Label (when meaning Tag entity — Label is a text color role in the design system)
+
+**Todo filter**:
+A set of list constraints (status, category, tag, priority, search, sort) applied to GET `/todos`. Session filter chips are not persisted across app restarts in v1.
+_Avoid_: Saved search (not v1), smart list
+
+**Batch action**:
+A server-supported bulk operation on the current user’s todos: `complete-all` or `delete-completed`.
+_Avoid_: Multi-select (multi-select is client-side selection + many single mutations)
+
+**Multi-select mode**:
+A list UI mode where the user selects many Todos and runs complete/delete via per-item API calls, not the batch endpoint.
+_Avoid_: Batch action (different mechanism)
+
+**Admin**:
+A user with `role === 'admin'` who may mutate categories, tags, and users. UI for these actions is fail-closed (hidden/blocked for non-admins).
+_Avoid_: Superuser, root
 
 ### Design system
 
@@ -88,3 +122,14 @@ These are product decisions captured for implementers; prefer ADRs for hard-to-r
 - Icons: SF Symbols for chrome
 - Haptics: selective commits
 - Delivery: one vertical redesign slice
+
+## Todo Service client (resolved in grilling)
+
+- Scope: **member + admin**
+- Tabs: Todos | Profile (+ Admin tab when admin)
+- Power kit: full fields/filters + multi-select + session chips + due sections + batch APIs (no calendar month, no saved presets)
+- Server state: TanStack Query; optimistic complete/delete
+- Create/edit: form sheet modal
+- List: infinite scroll
+- Deletes: confirm every time
+- Delivery: one vertical plan, phased milestones
