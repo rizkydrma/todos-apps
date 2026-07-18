@@ -8,12 +8,14 @@
  * 4. POST /auth/google dengan token Firebase (bukan raw Google OAuth)
  * 5. commitSession + navigate home
  *
+ * 409 EMAIL_REGISTERED_USE_PASSWORD | IDENTITY_CONFLICT → Alert jelas (auth-copy).
  * webClientId di configure() harus Web client dari Google Cloud Console.
  */
 import { useAuth } from '@/context/AuthContext';
 import { authApi } from '@/features/auth/api/auth.api';
+import { authCopy, messageForAuthCode } from '@/features/auth/auth-copy';
 import type { AuthSession } from '@/features/auth/types';
-import { getApiErrorMessage } from '@/lib/api-error';
+import { getApiErrorCode, getApiErrorMessage } from '@/lib/api-error';
 import { auth } from '@/lib/firebase';
 import {
   GoogleSignin,
@@ -75,13 +77,36 @@ export const useGoogleSignIn = () => {
           case statusCodes.IN_PROGRESS:
             return;
           case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            Alert.alert('Error', 'Google Play Services tidak tersedia');
+            Alert.alert(
+              authCopy.google.failTitle,
+              authCopy.google.playServices
+            );
             return;
           default:
             break;
         }
       }
-      Alert.alert('Login gagal', getApiErrorMessage(error));
+
+      // 409 policy Google: no silent link — pesan khusus
+      const code = getApiErrorCode(error);
+      if (
+        code === 'EMAIL_REGISTERED_USE_PASSWORD' ||
+        code === 'IDENTITY_CONFLICT'
+      ) {
+        Alert.alert(
+          authCopy.google.failTitle,
+          messageForAuthCode(code) ??
+            (code === 'EMAIL_REGISTERED_USE_PASSWORD'
+              ? authCopy.google.emailRegisteredUsePassword
+              : authCopy.google.identityConflict)
+        );
+        return;
+      }
+
+      Alert.alert(
+        authCopy.google.failTitle,
+        messageForAuthCode(code) ?? getApiErrorMessage(error)
+      );
     },
   });
 };

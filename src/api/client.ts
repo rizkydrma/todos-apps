@@ -41,6 +41,9 @@ const AUTH_NO_REFRESH_PATHS = [
   '/auth/register',
   '/auth/google',
   '/auth/logout',
+  // 401 INVALID_OTP / OTP_EXPIRED — jangan coba refresh (user belum punya session)
+  '/auth/verify-email',
+  '/auth/resend-verification',
 ] as const;
 
 /** True jika URL request termasuk path auth di atas. */

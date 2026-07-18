@@ -3,7 +3,7 @@
  *
  * - Zod: name, email, password min 6, confirmPassword harus cocok (refine)
  * - Auth guard di root Stack.Protected (hanya mount saat unauthenticated)
- * - useRegister mutation → auto session + ke home
+ * - useRegister mutation → navigate verify-email (belum ada session)
  * - Focus chain: name → email → password → confirm → submit
  */
 import { Button, Screen, TextButton, TextField } from '@/components/ui';

@@ -1,6 +1,6 @@
 /**
- * Helper mengekstrak pesan error ramah-user dari error Axios / Error biasa.
- * Dipakai di hook login/register/Google agar Alert menampilkan pesan backend.
+ * Helper mengekstrak pesan / kode error ramah-user dari error Axios / Error biasa.
+ * Dipakai di hook login/register/Google/verify agar Alert menampilkan pesan backend.
  */
 import { isAxiosError } from 'axios';
 
@@ -39,4 +39,14 @@ export function getApiErrorMessage(
   }
 
   return fallback;
+}
+
+/**
+ * Ambil application code dari envelope error backend (mis. EMAIL_NOT_VERIFIED).
+ * Return null kalau bukan Axios error atau body tidak punya code.
+ */
+export function getApiErrorCode(error: unknown): string | null {
+  if (!isAxiosError(error)) return null;
+  const data = error.response?.data as ErrorBody | undefined;
+  return data?.error?.code ?? null;
 }

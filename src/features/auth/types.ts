@@ -1,6 +1,6 @@
 /**
  * Tipe auth yang selaras dengan OpenAPI Todo Service.
- * Dipakai di authApi, AuthContext, hook login/register/Google.
+ * Dipakai di authApi, AuthContext, hook login/register/Google/verify-email.
  */
 
 /** User publik yang aman ditampilkan di UI (tanpa password). */
@@ -10,11 +10,13 @@ export type PublicUser = {
   name: string;
   role: 'user' | 'admin';
   firebaseUid: string | null;
+  /** true jika email sudah diverifikasi (OTP atau Google verified). */
+  emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
-/** Session lengkap setelah login/register/refresh: user + sepasang token. */
+/** Session lengkap setelah login/verify/refresh: user + sepasang token. */
 export type AuthSession = {
   user: PublicUser;
   accessToken: string;
@@ -27,6 +29,22 @@ export type AuthSession = {
 export type AuthSessionResponse = {
   success: true;
   data: AuthSession;
+  requestId: string;
+};
+
+/**
+ * Response register password: belum ada session.
+ * FE harus navigasi ke verify-email, bukan commitSession.
+ */
+export type RegisterPendingVerification = {
+  requiresEmailVerification: true;
+  email: string;
+};
+
+/** Envelope sukses register (pending verification). */
+export type RegisterPendingResponse = {
+  success: true;
+  data: RegisterPendingVerification;
   requestId: string;
 };
 
@@ -74,3 +92,25 @@ export type RefreshBody = {
 export type LogoutBody = {
   refreshToken: string;
 };
+
+/** Body POST /auth/verify-email. */
+export type VerifyEmailBody = {
+  email: string;
+  code: string;
+};
+
+/** Body POST /auth/resend-verification. */
+export type ResendVerificationBody = {
+  email: string;
+};
+
+/** Kode error backend yang relevan untuk FE auth (stabil di envelope error.code). */
+export type AuthErrorCode =
+  | 'EMAIL_NOT_VERIFIED'
+  | 'INVALID_OTP'
+  | 'OTP_EXPIRED'
+  | 'OTP_MAX_ATTEMPTS'
+  | 'RATE_LIMITED'
+  | 'EMAIL_REGISTERED_USE_PASSWORD'
+  | 'IDENTITY_CONFLICT'
+  | 'EMAIL_ALREADY_REGISTERED';
