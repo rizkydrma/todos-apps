@@ -4,7 +4,7 @@
  * - Zod + react-hook-form untuk validasi live (mode onChange)
  * - Auth guard di root Stack.Protected (screen ini hanya mount saat unauthenticated)
  * - Focus berantai: email → password → submit
- * - Setelah sukses: hook login navigasi ke /(main)/home
+ * - Setelah sukses: hook login navigasi ke /(main)/(tabs)/todos
  */
 import {
   Button,

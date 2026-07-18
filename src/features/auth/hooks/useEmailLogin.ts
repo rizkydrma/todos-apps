@@ -27,7 +27,7 @@ export const useEmailLogin = () => {
     onSuccess: async (session) => {
       // Simpan token + user, lalu masuk area main
       await commitSession(session);
-      router.replace('/(main)/home');
+      router.replace('/(main)/(tabs)/todos');
     },
 
     onError: (error: Error, variables: LoginBody) => {

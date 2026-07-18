@@ -1,26 +1,41 @@
 /**
- * Tipe domain Users (admin list / CRUD).
- * Beda dari PublicUser di auth — ini model resource /users di API.
+ * Tipe Users admin — selaras PublicUser OpenAPI + list meta.
  */
+import type { PublicUser } from '@/features/auth/types';
+import type { PaginationMeta } from '@/features/todos/types';
 
-/** Representasi user di list/detail users. */
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'user';
-  createdAt: string;
-}
+export type User = PublicUser;
 
-/** Payload create user (admin). */
-export interface CreateUserDto {
-  name: string;
-  email: string;
-  password: string;
-}
+export type UserListFilters = {
+  page?: number;
+  limit?: number;
+  search?: string;
+};
 
-/** Response list users + optional meta total. */
-export interface UserListResponse {
+export type UserListResult = {
+  items: User[];
+  meta: PaginationMeta;
+};
+
+export type UserListResponse = {
+  success: true;
   data: User[];
-  meta?: { total: number };
-}
+  meta: PaginationMeta;
+  requestId: string;
+};
+
+export type PublicUserResponse = {
+  success: true;
+  data: User;
+  requestId: string;
+};
+
+export type UpdateUserRoleBody = {
+  role: 'user' | 'admin';
+};
+
+export type DeletedResponse = {
+  success: true;
+  data: { deleted: boolean };
+  requestId: string;
+};

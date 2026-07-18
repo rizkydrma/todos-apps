@@ -66,7 +66,7 @@ export const useGoogleSignIn = () => {
 
     onSuccess: async (session) => {
       await commitSession(session);
-      router.replace('/(main)/home');
+      router.replace('/(main)/(tabs)/todos');
     },
 
     onError: (error: Error) => {

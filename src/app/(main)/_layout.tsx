@@ -1,19 +1,31 @@
 /**
- * Layout group (main) — stack screen privat.
- *
- * Auth guard TIDAK di sini: sudah di root lewat Stack.Protected.
- * File ini hanya mengatur nested navigator (header, title, dll).
+ * Stack privat (main): tabs + form sheet create/edit todo.
+ * Auth guard di root Stack.Protected.
  */
+import { useAppTheme } from '@/context/ThemeContext';
 import { Stack } from 'expo-router';
 
 export default function MainLayout() {
+  const { theme } = useAppTheme();
+
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerStyle: { backgroundColor: theme.colors.systemBackground },
+        headerTintColor: theme.colors.label,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: theme.colors.systemBackground },
       }}
     >
-      <Stack.Screen name="home" options={{ title: 'Beranda' }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="todo-form"
+        options={{
+          presentation: 'modal',
+          title: 'Todo',
+          headerShown: true,
+        }}
+      />
     </Stack>
   );
 }

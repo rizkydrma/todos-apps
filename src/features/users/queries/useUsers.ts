@@ -1,16 +1,57 @@
 /**
- * Hook list users (React Query useQuery).
- * Data di-cache dengan key userKeys.list(filters).
- * staleTime 5 menit: tidak re-fetch otomatis dalam window itu.
+ * Admin users: infinite list + role/delete mutations.
  */
-import { useQuery } from '@tanstack/react-query';
-import { userKeys } from './keys';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { toast } from '@/lib/toast';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { userApi } from '../api/user.api';
+import type { UpdateUserRoleBody } from '../types';
+import { userKeys } from './keys';
 
-export const useUsers = (filters = {}) => {
-  return useQuery({
-    queryKey: userKeys.list(filters),
-    queryFn: () => userApi.getUsers(filters),
-    staleTime: 5 * 60 * 1000,
+const LIMIT = 20;
+
+export function useUsersInfinite(search = '') {
+  return useInfiniteQuery({
+    queryKey: userKeys.list({ search: search || undefined, limit: LIMIT }),
+    queryFn: ({ pageParam }) =>
+      userApi.list({
+        page: pageParam,
+        limit: LIMIT,
+        search: search || undefined,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.meta.page >= last.meta.totalPages ? undefined : last.meta.page + 1,
   });
-};
+}
+
+export function useUpdateUserRole() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateUserRoleBody }) =>
+      userApi.updateRole(id, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: userKeys.all });
+      toast.success({ message: 'Role diperbarui' });
+    },
+    onError: (e) =>
+      toast.error({ title: 'Gagal', message: getApiErrorMessage(e) }),
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => userApi.remove(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: userKeys.all });
+      toast.success({ message: 'User dihapus' });
+    },
+    onError: (e) =>
+      toast.error({ title: 'Gagal', message: getApiErrorMessage(e) }),
+  });
+}
