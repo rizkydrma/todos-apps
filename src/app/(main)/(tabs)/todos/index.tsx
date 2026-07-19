@@ -1,6 +1,6 @@
 /**
  * Tab Todos: infinite list + filter drawer + swipe row.
- * Aksi per-item: swipe selesai/hapus, pensil/tap edit. Tanpa multi-select/batch.
+ * Aksi per-item: full-swipe selesai/hapus (otomatis), pensil/tap edit.
  */
 import {
   AppText,

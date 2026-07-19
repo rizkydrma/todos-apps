@@ -4,9 +4,10 @@
  * Menyediakan:
  * - user, status (bootstrapping | authenticated | unauthenticated)
  * - commitSession: simpan session setelah login/register sukses
- * - signOut: logout API + clear storage + Google signOut
+ * - signOut: logout API + clear storage + Google signOut + clear React Query cache
  *
  * Saat mount: baca SecureStore → refresh token → set authenticated/unauthenticated.
+ * Session null (logout/refresh gagal) → queryClient.clear() agar data user lama tidak bocor.
  * Screen index/main/login membaca status lewat useAuth() untuk redirect.
  */
 import { authApi } from '@/features/auth/api/auth.api';
@@ -19,6 +20,7 @@ import {
   subscribeSession,
 } from '@/lib/auth-session';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
   useCallback,
@@ -49,17 +51,23 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
  * Jangan panggil useAuth di luar provider ini.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<PublicUser | null>(null);
   // Mulai bootstrapping supaya UI tampil loading, bukan flash ke login
   const [status, setStatus] = useState<AuthStatus>('bootstrapping');
 
-  // Sinkronkan state React bila session di-clear/refresh dari tempat lain (mis. interceptor)
+  // Sinkronkan state React bila session di-clear/refresh dari tempat lain (mis. interceptor).
+  // Saat user = null (logout / refresh gagal): buang seluruh React Query cache
+  // supaya user berikutnya tidak melihat todos/categories user lama (keys tidak per-user).
   useEffect(() => {
     return subscribeSession((next) => {
       setUser(next);
       setStatus(next ? 'authenticated' : 'unauthenticated');
+      if (!next) {
+        queryClient.clear();
+      }
     });
-  }, []);
+  }, [queryClient]);
 
   /**
    * Bootstrap: hydrate SecureStore → kalau ada refresh token, tukar ke session valid.

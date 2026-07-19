@@ -1,8 +1,10 @@
 /**
- * Baris todo dengan swipe:
- * - Swipe kanan → aksi Selesai
- * - Swipe kiri → aksi Hapus
+ * Baris todo dengan swipe commit (otomatis, tanpa tap kedua):
+ * - Swipe kanan (buka left actions) → Selesai
+ * - Swipe kiri (buka right actions) → Hapus (parent tetap confirm)
  * - Tap / pensil → edit
+ *
+ * Reveal button tetap ada sebagai affordance visual + fallback a11y.
  */
 import { AppText, Badge } from '@/components/ui';
 import { useAppTheme } from '@/context/ThemeContext';
@@ -22,7 +24,7 @@ export type TodoSwipeRowProps = {
 };
 
 /**
- * Satu baris list: swipe actions + edit.
+ * Satu baris list: full-open swipe = commit aksi; tap = edit.
  */
 export function TodoSwipeRow({
   item,
@@ -33,6 +35,8 @@ export function TodoSwipeRow({
 }: TodoSwipeRowProps) {
   const { theme } = useAppTheme();
   const swipeRef = useRef<Swipeable>(null);
+  /** Cegah double-fire open + tap pada frame yang sama. */
+  const committingRef = useRef(false);
 
   const styles = useThemedStyles((t) => ({
     row: {
@@ -84,13 +88,34 @@ export function TodoSwipeRow({
 
   const close = () => swipeRef.current?.close();
 
+  /**
+   * Commit aksi setelah row fully open (lewat threshold).
+   * direction dari RNGH: 'left' = left actions terbuka (swipe kanan),
+   * 'right' = right actions terbuka (swipe kiri).
+   */
+  const commitFromOpen = (direction: 'left' | 'right') => {
+    if (committingRef.current) return;
+    committingRef.current = true;
+    close();
+    if (direction === 'left') {
+      onToggleComplete();
+    } else {
+      onDelete();
+    }
+    // Reset setelah frame — row bisa di-swipe lagi setelah list update
+    requestAnimationFrame(() => {
+      committingRef.current = false;
+    });
+  };
+
   const renderLeftActions = () => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Tandai selesai"
       onPress={() => {
-        onToggleComplete();
+        if (committingRef.current) return;
         close();
+        onToggleComplete();
       }}
       style={[styles.action, styles.actionComplete]}
     >
@@ -104,6 +129,7 @@ export function TodoSwipeRow({
       accessibilityRole="button"
       accessibilityLabel="Hapus todo"
       onPress={() => {
+        if (committingRef.current) return;
         close();
         onDelete();
       }}
@@ -120,12 +146,14 @@ export function TodoSwipeRow({
         ref={swipeRef}
         friction={2}
         overshootFriction={8}
+        // Threshold rendah: lepas setelah lewat ~40px → open + auto-commit
         leftThreshold={40}
         rightThreshold={40}
         renderLeftActions={renderLeftActions}
         renderRightActions={renderRightActions}
         overshootLeft={false}
         overshootRight={false}
+        onSwipeableOpen={commitFromOpen}
       >
         <Pressable style={styles.row} onPress={onEdit}>
           <View style={styles.rowBody}>
