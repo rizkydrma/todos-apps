@@ -1,11 +1,23 @@
 /**
- * Tab Todos: infinite list + filters + multi-select + batch + HIG grouped UI.
- * Data dari Todo Service (bukan state lokal).
+ * Tab Todos: infinite list + multi-select + batch.
+ * Filter tidak di-expand di list — floating drawer (select/option).
  */
-import { AppText, Screen } from '@/components/ui';
+import {
+  AppText,
+  PageHeaderChrome,
+  PageHeaderLargeTitle,
+  Screen,
+  usePageHeaderCollapse,
+} from '@/components/ui';
+import { useFloatingTabBarInset } from '@/components/navigation/FloatingPillTabBar';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useCategories } from '@/features/categories/queries/useCategories';
 import { useTags } from '@/features/tags/queries/useTags';
+import {
+  countActiveTodoFilters,
+  TodoFilterDrawer,
+  type TodoFilterValues,
+} from '@/features/todos/components/TodoFilterDrawer';
 import { groupTodosByDue } from '@/features/todos/lib/dueSections';
 import {
   useBatchTodos,
@@ -17,7 +29,7 @@ import {
   useTodosInfinite,
   type TodosInfiniteFilters,
 } from '@/features/todos/queries/useTodosInfinite';
-import type { Priority, TodoWithRelations } from '@/features/todos/types';
+import type { TodoWithRelations } from '@/features/todos/types';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { confirmDestructive } from '@/lib/confirm';
 import { hapticCommit } from '@/lib/haptics';
@@ -25,74 +37,48 @@ import { toast } from '@/lib/toast';
 import { todosApi } from '@/features/todos/api/todos.api';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { ListFilter, Plus } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   RefreshControl,
-  ScrollView,
-  TextInput,
+  StyleSheet,
   View,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 
-type StatusFilter = 'all' | 'active' | 'completed';
-
-function FilterChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-}) {
-  const styles = useThemedStyles((t) => ({
-    chip: {
-      paddingHorizontal: t.spacing.sm,
-      paddingVertical: t.spacing.xs,
-      borderRadius: t.radius.full,
-      backgroundColor: t.colors.tertiarySystemFill,
-    },
-    chipActive: {
-      backgroundColor: t.colors.primary,
-    },
-  }));
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.chip, active && styles.chipActive]}
-    >
-      <AppText variant="caption" color={active ? 'onPrimary' : 'label'}>
-        {label}
-      </AppText>
-    </Pressable>
-  );
-}
+const DEFAULT_FILTERS: TodoFilterValues = {
+  status: 'active',
+  priority: undefined,
+  categoryId: undefined,
+  tagId: undefined,
+  sort: '-createdAt',
+  search: '',
+};
 
 export default function TodosScreen() {
   const router = useRouter();
   const { theme } = useAppTheme();
-  const [status, setStatus] = useState<StatusFilter>('active');
-  const [priority, setPriority] = useState<Priority | undefined>();
-  const [categoryId, setCategoryId] = useState<string | undefined>();
-  const [tagId, setTagId] = useState<string | undefined>();
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [sort, setSort] = useState<TodosInfiniteFilters['sort']>('-createdAt');
+  const { scrollY, scrollHandler } = usePageHeaderCollapse();
+  const tabInset = useFloatingTabBarInset();
+
+  const [filtersState, setFiltersState] =
+    useState<TodoFilterValues>(DEFAULT_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const filters: TodosInfiniteFilters = useMemo(
     () => ({
-      status: status === 'all' ? undefined : status,
-      priority,
-      category: categoryId,
-      tag: tagId,
-      search: search || undefined,
-      sort,
+      status: filtersState.status === 'all' ? undefined : filtersState.status,
+      priority: filtersState.priority,
+      category: filtersState.categoryId,
+      tag: filtersState.tagId,
+      search: filtersState.search.trim() || undefined,
+      sort: filtersState.sort,
     }),
-    [status, priority, categoryId, tagId, search, sort]
+    [filtersState]
   );
 
   const query = useTodosInfinite(filters);
@@ -104,35 +90,56 @@ export default function TodosScreen() {
   const deleteTodo = useDeleteTodo();
   const batch = useBatchTodos();
 
+  const activeFilterCount = countActiveTodoFilters(filtersState);
+
+  const filterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (filtersState.status !== 'active') {
+      parts.push(
+        filtersState.status === 'all'
+          ? 'Semua status'
+          : filtersState.status === 'completed'
+            ? 'Selesai'
+            : 'Aktif'
+      );
+    }
+    if (filtersState.priority) parts.push(filtersState.priority);
+    if (filtersState.categoryId) {
+      const c = categories.find((x) => x.id === filtersState.categoryId);
+      if (c) parts.push(c.name);
+    }
+    if (filtersState.tagId) {
+      const t = tags.find((x) => x.id === filtersState.tagId);
+      if (t) parts.push(t.name);
+    }
+    if (filtersState.search.trim()) {
+      parts.push(`“${filtersState.search.trim()}”`);
+    }
+    if (filtersState.sort && filtersState.sort !== '-createdAt') {
+      parts.push('Sort custom');
+    }
+    return parts.length ? parts.join(' · ') : 'Filter default (aktif)';
+  }, [filtersState, categories, tags]);
+
   const styles = useThemedStyles((t) => ({
     root: { flex: 1 },
-    chips: {
-      paddingHorizontal: t.spacing.md,
-      paddingVertical: t.spacing.sm,
-      gap: t.spacing.sm,
-    },
-    chipRow: {
-      flexDirection: 'row' as const,
-      flexWrap: 'wrap' as const,
-      gap: t.spacing.xs,
-      marginBottom: t.spacing.xs,
-    },
-    search: {
-      borderWidth: 1,
-      borderColor: t.colors.separator,
-      borderRadius: t.radius.lg,
-      paddingHorizontal: t.spacing.md,
-      paddingVertical: t.spacing.sm,
-      color: t.colors.label,
-      backgroundColor: t.colors.tertiarySystemFill,
+    summaryRow: {
+      marginHorizontal: t.spacing.lg,
       marginBottom: t.spacing.sm,
-      minHeight: t.size.controlHeight,
+      paddingVertical: t.spacing.sm,
+      paddingHorizontal: t.spacing.md,
+      borderRadius: t.radius.lg,
+      backgroundColor: t.colors.tertiarySystemFill,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: t.spacing.sm,
+      minHeight: t.size.touchMin,
     },
     toolbar: {
       flexDirection: 'row' as const,
       justifyContent: 'space-between' as const,
       alignItems: 'center' as const,
-      paddingHorizontal: t.spacing.md,
+      paddingHorizontal: t.spacing.lg,
       marginBottom: t.spacing.sm,
       gap: t.spacing.sm,
     },
@@ -168,13 +175,50 @@ export default function TodosScreen() {
       borderRadius: t.radius.sm,
       backgroundColor: t.colors.tertiarySystemFill,
     },
-    fab: {
+    fabCol: {
       position: 'absolute' as const,
       right: t.spacing.lg,
-      bottom: t.spacing.lg,
+      // Di atas floating pill tab bar
+      gap: t.spacing.sm,
+      alignItems: 'center' as const,
+    },
+    fab: {
       width: 56,
       height: 56,
       borderRadius: t.radius.full,
+      backgroundColor: t.colors.primary,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      // Soft float
+      shadowColor: t.colors.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    fabSecondary: {
+      width: 48,
+      height: 48,
+      borderRadius: t.radius.full,
+      backgroundColor: t.colors.secondarySystemGroupedBackground,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.separator,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      shadowColor: t.colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    fabBadge: {
+      position: 'absolute' as const,
+      top: -2,
+      right: -2,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      paddingHorizontal: 4,
       backgroundColor: t.colors.primary,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
@@ -288,6 +332,10 @@ export default function TodosScreen() {
     batch.mutate(action);
   };
 
+  const patchFilters = (patch: Partial<TodoFilterValues>) => {
+    setFiltersState((prev) => ({ ...prev, ...patch }));
+  };
+
   const renderRow = (item: TodoWithRelations, isLast: boolean) => (
     <View key={item.id}>
       <Pressable
@@ -386,88 +434,28 @@ export default function TodosScreen() {
 
   const listHeader = (
     <View>
-      <View style={styles.chips}>
-        <TextInput
-          value={searchInput}
-          onChangeText={setSearchInput}
-          onSubmitEditing={() => setSearch(searchInput.trim())}
-          placeholder="Cari todo..."
-          placeholderTextColor={theme.colors.placeholderText}
-          style={styles.search}
-          returnKeyType="search"
-        />
-        <View style={styles.chipRow}>
-          {(['all', 'active', 'completed'] as StatusFilter[]).map((s) => (
-            <FilterChip
-              key={s}
-              label={s}
-              active={status === s}
-              onPress={() => setStatus(s)}
-            />
-          ))}
-        </View>
-        <View style={styles.chipRow}>
-          {([undefined, 'low', 'medium', 'high'] as const).map((p) => (
-            <FilterChip
-              key={p ?? 'any'}
-              label={p ?? 'any priority'}
-              active={priority === p}
-              onPress={() => setPriority(p)}
-            />
-          ))}
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.chipRow}>
-            <FilterChip
-              label="Semua kategori"
-              active={!categoryId}
-              onPress={() => setCategoryId(undefined)}
-            />
-            {categories.map((c) => (
-              <FilterChip
-                key={c.id}
-                label={c.name}
-                active={categoryId === c.id}
-                onPress={() => setCategoryId(c.id)}
-              />
-            ))}
-          </View>
-        </ScrollView>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.chipRow}>
-            <FilterChip
-              label="Semua tag"
-              active={!tagId}
-              onPress={() => setTagId(undefined)}
-            />
-            {tags.map((t) => (
-              <FilterChip
-                key={t.id}
-                label={t.name}
-                active={tagId === t.id}
-                onPress={() => setTagId(t.id)}
-              />
-            ))}
-          </View>
-        </ScrollView>
-        <View style={styles.chipRow}>
-          {(
-            [
-              ['-createdAt', 'Terbaru'],
-              ['dueDate', 'Due ↑'],
-              ['-dueDate', 'Due ↓'],
-              ['priority', 'Priority'],
-            ] as const
-          ).map(([value, label]) => (
-            <FilterChip
-              key={value}
-              label={label}
-              active={sort === value}
-              onPress={() => setSort(value)}
-            />
-          ))}
-        </View>
-      </View>
+      <PageHeaderLargeTitle title="Home" subtitle="Todos kamu" />
+
+      {/* Ringkasan filter — tap buka drawer */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Buka filter"
+        onPress={() => setFilterOpen(true)}
+        style={styles.summaryRow}
+      >
+        <ListFilter size={18} color={theme.colors.primary} strokeWidth={2.2} />
+        <AppText
+          variant="caption"
+          color="secondaryLabel"
+          numberOfLines={2}
+          style={{ flex: 1 }}
+        >
+          {filterSummary}
+        </AppText>
+        <AppText variant="caption" color="primary">
+          Ubah
+        </AppText>
+      </Pressable>
 
       <View style={styles.toolbar}>
         <Pressable
@@ -499,13 +487,19 @@ export default function TodosScreen() {
   return (
     <Screen background="systemGroupedBackground" safe={{ top: false }}>
       <View style={styles.root}>
+        <PageHeaderChrome title="Home" scrollY={scrollY} />
         {query.isLoading ? (
-          <ActivityIndicator style={{ marginTop: 40 }} />
+          <>
+            <PageHeaderLargeTitle title="Home" subtitle="Todos kamu" />
+            <ActivityIndicator style={{ marginTop: 40 }} />
+          </>
         ) : (
-          <FlatList
+          <Animated.FlatList
             data={sections}
             keyExtractor={(s) => s.key}
             ListHeaderComponent={listHeader}
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
             refreshControl={
               <RefreshControl
                 refreshing={query.isRefetching && !query.isFetchingNextPage}
@@ -575,20 +569,57 @@ export default function TodosScreen() {
             </Pressable>
           </View>
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Tambah todo"
-            style={styles.fab}
-            onPress={() => router.push('/(main)/todo-form')}
-          >
-            <SymbolView
-              name="plus"
-              size={28}
-              tintColor={theme.colors.onPrimary}
-            />
-          </Pressable>
+          <View style={[styles.fabCol, { bottom: tabInset + 8 }]}>
+            {/* Floating filter → drawer */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Filter todo"
+              style={styles.fabSecondary}
+              onPress={() => setFilterOpen(true)}
+            >
+              <ListFilter
+                size={22}
+                color={theme.colors.label}
+                strokeWidth={2.2}
+              />
+              {activeFilterCount > 0 ? (
+                <View style={styles.fabBadge}>
+                  <AppText
+                    variant="caption"
+                    color="onPrimary"
+                    style={{ fontSize: 11, lineHeight: 14 }}
+                  >
+                    {activeFilterCount}
+                  </AppText>
+                </View>
+              ) : null}
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Tambah todo"
+              style={styles.fab}
+              onPress={() => router.push('/(main)/todo-form')}
+            >
+              <Plus
+                size={28}
+                color={theme.colors.onPrimary}
+                strokeWidth={2.4}
+              />
+            </Pressable>
+          </View>
         )}
       </View>
+
+      <TodoFilterDrawer
+        visible={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        values={filtersState}
+        onChange={patchFilters}
+        onReset={() => setFiltersState(DEFAULT_FILTERS)}
+        categories={categories}
+        tags={tags}
+      />
     </Screen>
   );
 }

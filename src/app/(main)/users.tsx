@@ -1,7 +1,9 @@
 /**
- * Admin list users: search, role toggle, delete (confirm).
+ * Admin list users (stack privat) — dibuka dari Profile.
+ * Search, role toggle, delete (confirm).
  */
 import { AppText, Screen } from '@/components/ui';
+import { useAppTheme } from '@/context/ThemeContext';
 import {
   useDeleteUser,
   useUpdateUserRole,
@@ -17,9 +19,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useAppTheme } from '@/context/ThemeContext';
 
-export default function AdminUsersScreen() {
+export default function UsersScreen() {
   const { theme } = useAppTheme();
   const [search, setSearch] = useState('');
   const [applied, setApplied] = useState('');
@@ -51,6 +52,7 @@ export default function AdminUsersScreen() {
 
   return (
     <Screen background="systemGroupedBackground" safe={{ top: false }}>
+      {/* Title/back dari Stack header di (main)/_layout — tidak double PageHeader */}
       <FlatList
         data={items}
         keyExtractor={(u) => u.id}

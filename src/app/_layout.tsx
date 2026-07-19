@@ -12,7 +12,8 @@
  * Docs: https://docs.expo.dev/router/advanced/authentication/
  *       https://docs.expo.dev/router/advanced/protected/
  */
-import { ToastHost } from '@/components/ui';
+import { ThemeInkOverlay } from '@/components/theme/ThemeInkOverlay';
+import { ConfirmDialogHost, ToastHost } from '@/components/ui';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
@@ -25,7 +26,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
  * Harus di dalam ThemeProvider + AuthProvider.
  */
 function NavigationLayout() {
-  const { isDarkMode, theme } = useAppTheme();
+  const { theme, statusBarIsDark } = useAppTheme();
   const { status, isAuthenticated } = useAuth();
 
   // Tunggu hydrate SecureStore + refresh token — jangan evaluasi guard dulu
@@ -40,7 +41,7 @@ function NavigationLayout() {
         }}
       >
         <StatusBar
-          barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+          barStyle={statusBarIsDark ? 'light-content' : 'dark-content'}
           backgroundColor={theme.colors.systemBackground}
         />
         <ActivityIndicator />
@@ -50,8 +51,9 @@ function NavigationLayout() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.systemBackground }}>
+      {/* Freeze style selama ink (frozenDark) — status bar tidak di screenshot */}
       <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        barStyle={statusBarIsDark ? 'light-content' : 'dark-content'}
         backgroundColor={theme.colors.systemBackground}
       />
 
@@ -94,9 +96,16 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <NavigationLayout />
-            {/* Toast di atas stack; butuh Theme + SafeArea di parent */}
-            <ToastHost />
+            {/* Wrapper flex-1 supaya absoluteFill ink/toast relative ke full screen */}
+            <View style={{ flex: 1 }}>
+              <NavigationLayout />
+              {/* Toast di atas stack; butuh Theme + SafeArea di parent */}
+              <ToastHost />
+              {/* Confirm delete/dialog — imperative confirmDestructive */}
+              <ConfirmDialogHost />
+              {/* Ink reveal canvas — full screen di atas konten saat animasi */}
+              <ThemeInkOverlay />
+            </View>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>

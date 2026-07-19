@@ -11,7 +11,10 @@ const DEFAULT_LIMIT = 20;
 
 export type TodosInfiniteFilters = Omit<TodoListFilters, 'page' | 'limit'>;
 
-export function useTodosInfinite(filters: TodosInfiniteFilters = {}) {
+export function useTodosInfinite(
+  filters: TodosInfiniteFilters = {},
+  options?: { enabled?: boolean }
+) {
   return useInfiniteQuery({
     queryKey: todoKeys.infinite(filters),
     queryFn: ({ pageParam }) =>
@@ -25,6 +28,7 @@ export function useTodosInfinite(filters: TodosInfiniteFilters = {}) {
       if (last.meta.page >= last.meta.totalPages) return undefined;
       return last.meta.page + 1;
     },
+    enabled: options?.enabled ?? true,
   });
 }
 

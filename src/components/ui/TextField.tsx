@@ -1,10 +1,11 @@
 /**
  * Input form HIG: rounded rect + placeholder + optional caption label.
  * Integrasi react-hook-form (Controller). Tanpa floating label.
+ * Opsional leftIcon (Lucide) di dalam field.
  */
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Control, Controller, FieldValues, Path } from 'react-hook-form';
 import { TextInput, type TextInputProps, View } from 'react-native';
 import { AppText } from './AppText';
@@ -23,6 +24,8 @@ export type TextFieldProps<T extends FieldValues> = Omit<
   error?: string;
   /** Ref ke TextInput (untuk focus berantai antar field). */
   innerRef?: React.RefObject<TextInput | null>;
+  /** Ikon kiri di dalam field (mis. Lucide Mail/Lock). */
+  leftIcon?: ReactNode;
 };
 
 /**
@@ -36,6 +39,7 @@ export function TextField<T extends FieldValues>({
   innerRef,
   label,
   placeholder,
+  leftIcon,
   onFocus,
   onBlur: onBlurProp,
   ...restProps
@@ -52,13 +56,21 @@ export function TextField<T extends FieldValues>({
       marginBottom: t.spacing.xs,
       marginLeft: t.spacing.xs,
     },
-    input: {
+    fieldRow: {
       minHeight: t.size.controlHeight,
       borderWidth: 1,
       borderRadius: t.radius.lg,
       paddingHorizontal: t.spacing.md,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: t.spacing.sm,
+    },
+    input: {
+      flex: 1,
       fontSize: t.fontSize.md,
       paddingVertical: t.spacing.sm,
+      // Hilangkan padding ekstra agar tinggi selaras dengan icon row
+      margin: 0,
     },
     errorText: {
       marginTop: t.spacing.xs,
@@ -88,32 +100,43 @@ export function TextField<T extends FieldValues>({
         control={control}
         name={name}
         render={({ field: { onChange, onBlur: onFieldBlur, value } }) => (
-          <TextInput
-            ref={innerRef}
-            value={value == null ? '' : String(value)}
-            onChangeText={onChange}
-            placeholder={placeholder}
-            placeholderTextColor={theme.colors.placeholderText}
-            accessibilityLabel={label ?? placeholder}
-            {...restProps}
-            onFocus={(e) => {
-              setFocused(true);
-              onFocus?.(e);
-            }}
-            onBlur={(e) => {
-              setFocused(false);
-              onFieldBlur();
-              onBlurProp?.(e);
-            }}
+          <View
             style={[
-              styles.input,
+              styles.fieldRow,
               {
                 backgroundColor: theme.colors.tertiarySystemFill,
                 borderColor,
-                color: theme.colors.label,
               },
             ]}
-          />
+          >
+            {leftIcon ? (
+              <View
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                {leftIcon}
+              </View>
+            ) : null}
+            <TextInput
+              ref={innerRef}
+              value={value == null ? '' : String(value)}
+              onChangeText={onChange}
+              placeholder={placeholder}
+              placeholderTextColor={theme.colors.placeholderText}
+              accessibilityLabel={label ?? placeholder}
+              {...restProps}
+              onFocus={(e) => {
+                setFocused(true);
+                onFocus?.(e);
+              }}
+              onBlur={(e) => {
+                setFocused(false);
+                onFieldBlur();
+                onBlurProp?.(e);
+              }}
+              style={[styles.input, { color: theme.colors.label }]}
+            />
+          </View>
         )}
       />
 

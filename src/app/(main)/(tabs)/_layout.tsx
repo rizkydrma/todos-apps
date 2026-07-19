@@ -1,74 +1,65 @@
 /**
- * Tab shell member: Todos | Profile | Admin (role-gated).
+ * Tab shell member — route list dari `@/navigation/mainTabs`.
+ * Users admin: Profile → /(main)/users (bukan tab admin zombie).
  */
-import { useAuth } from '@/context/AuthContext';
+import {
+  FloatingPillTabBar,
+  useFloatingTabBarInset,
+} from '@/components/navigation/FloatingPillTabBar';
 import { useAppTheme } from '@/context/ThemeContext';
+import { MAIN_TABS } from '@/navigation/mainTabs';
 import { Tabs } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 
 export default function MainTabsLayout() {
   const { theme } = useAppTheme();
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const tabInset = useFloatingTabBarInset();
 
   return (
     <Tabs
+      tabBar={(props) => (
+        <FloatingPillTabBar
+          state={props.state}
+          descriptors={props.descriptors}
+          navigation={{
+            // Adapter tipis: map RN emit generic → call site tabPress
+            emit: (event) =>
+              props.navigation.emit({
+                type: event.type as 'tabPress',
+                target: event.target,
+                canPreventDefault: true,
+              }),
+            navigate: (name) => {
+              props.navigation.navigate(name as never);
+            },
+          }}
+        />
+      )}
       screenOptions={{
+        headerShown: false,
         headerStyle: { backgroundColor: theme.colors.systemBackground },
         headerTintColor: theme.colors.label,
         headerShadowVisible: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.secondaryLabel,
         tabBarStyle: {
-          backgroundColor: theme.colors.systemBackground,
-          borderTopColor: theme.colors.separator,
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          height: 0,
+        },
+        tabBarBackground: () => null,
+        sceneStyle: {
+          paddingBottom: tabInset,
+          backgroundColor: theme.colors.systemGroupedBackground,
         },
       }}
     >
-      <Tabs.Screen
-        name="todos/index"
-        options={{
-          title: 'Todos',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name="checklist"
-              size={22}
-              tintColor={color}
-              fallback={undefined}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile/index"
-        options={{
-          title: 'Profil',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name="person.crop.circle"
-              size={22}
-              tintColor={color}
-              fallback={undefined}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="admin"
-        options={{
-          title: 'Admin',
-          href: isAdmin ? undefined : null,
-          headerShown: false,
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name="gearshape.fill"
-              size={22}
-              tintColor={color}
-              fallback={undefined}
-            />
-          ),
-        }}
-      />
+      {MAIN_TABS.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{ title: tab.title }}
+        />
+      ))}
     </Tabs>
   );
 }

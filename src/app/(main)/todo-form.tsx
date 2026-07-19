@@ -1,8 +1,15 @@
 /**
- * Form sheet create/edit todo (ADR-0008 presentation formSheet).
+ * Form sheet create/edit todo (ADR-0008 presentation modal).
  * Params: id? — kalau ada = edit mode.
+ * PageHeader konsisten dengan tab roots (native stack header off).
  */
-import { AppText, Button, TextField } from '@/components/ui';
+import {
+  AppText,
+  Button,
+  PageHeader,
+  PageHeaderBackButton,
+  TextField,
+} from '@/components/ui';
 import { useCategories } from '@/features/categories/queries/useCategories';
 import { useTags } from '@/features/tags/queries/useTags';
 import { todosApi } from '@/features/todos/api/todos.api';
@@ -13,7 +20,7 @@ import {
 import type { Priority } from '@/features/todos/types';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
@@ -30,7 +37,6 @@ export default function TodoFormScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = Boolean(id);
   const router = useRouter();
-  const navigation = useNavigation();
   const createTodo = useCreateTodo();
   const updateTodo = useUpdateTodo();
   const { data: categories = [] } = useCategories();
@@ -52,10 +58,6 @@ export default function TodoFormScreen() {
     defaultValues: { title: '', description: '' },
     mode: 'onChange',
   });
-
-  useEffect(() => {
-    navigation.setOptions({ title: isEdit ? 'Edit Todo' : 'Todo Baru' });
-  }, [isEdit, navigation]);
 
   useEffect(() => {
     if (!id) return;
@@ -82,8 +84,13 @@ export default function TodoFormScreen() {
   }, [id, reset]);
 
   const styles = useThemedStyles((t) => ({
+    root: {
+      flex: 1,
+      backgroundColor: t.colors.systemBackground,
+    },
     content: {
       padding: t.spacing.lg,
+      paddingTop: t.spacing.sm,
       paddingBottom: t.spacing.xxl,
       gap: t.spacing.md,
     },
@@ -100,6 +107,12 @@ export default function TodoFormScreen() {
       backgroundColor: t.colors.tertiarySystemFill,
     },
     chipOn: { backgroundColor: t.colors.primary },
+    loading: {
+      flex: 1,
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
+      backgroundColor: t.colors.systemBackground,
+    },
   }));
 
   const onSubmit = (values: FormValues) => {
@@ -129,10 +142,21 @@ export default function TodoFormScreen() {
     setDueDate(d.toISOString());
   };
 
+  // HIG 2-baris: chrome (back) + large title; back = chevron + press spring
+  const header = (
+    <PageHeader
+      title={isEdit ? 'Edit Todo' : 'Todo Baru'}
+      subtitle={isEdit ? 'Perbarui detail tugas' : 'Tambah tugas baru'}
+      safeTop
+      leading={<PageHeaderBackButton onPress={() => router.back()} />}
+    />
+  );
+
   if (loadingDetail) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
-        <ActivityIndicator />
+      <View style={styles.loading}>
+        {header}
+        <ActivityIndicator style={{ marginTop: 40 }} />
       </View>
     );
   }
@@ -140,161 +164,180 @@ export default function TodoFormScreen() {
   const pending = createTodo.isPending || updateTodo.isPending;
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <TextField
-        control={control}
-        name="title"
-        label="Judul"
-        placeholder="Apa yang perlu dikerjakan?"
-        error={errors.title?.message}
-      />
-      <TextField
-        control={control}
-        name="description"
-        label="Deskripsi"
-        placeholder="Opsional"
-        error={errors.description?.message}
-        multiline
-      />
+    <View style={styles.root}>
+      {header}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <TextField
+          control={control}
+          name="title"
+          label="Judul"
+          placeholder="Apa yang perlu dikerjakan?"
+          error={errors.title?.message}
+        />
+        <TextField
+          control={control}
+          name="description"
+          label="Deskripsi"
+          placeholder="Opsional"
+          error={errors.description?.message}
+          multiline
+        />
 
-      <View>
-        <AppText variant="caption" color="secondaryLabel" style={styles.label}>
-          Prioritas
-        </AppText>
-        <View style={styles.row}>
-          {(['low', 'medium', 'high'] as Priority[]).map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => setPriority(p)}
-              style={[styles.chip, priority === p && styles.chipOn]}
-            >
-              <AppText
-                variant="caption"
-                color={priority === p ? 'onPrimary' : 'label'}
-              >
-                {p}
-              </AppText>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      <View>
-        <AppText variant="caption" color="secondaryLabel" style={styles.label}>
-          Tenggat
-        </AppText>
-        <View style={styles.row}>
-          {[
-            { label: 'Tidak ada', days: null as number | null },
-            { label: 'Hari ini', days: 0 },
-            { label: '+1 hari', days: 1 },
-            { label: '+7 hari', days: 7 },
-          ].map((opt) => {
-            const active =
-              opt.days == null
-                ? dueDate == null
-                : dueDate != null &&
-                  Math.abs(
-                    new Date(dueDate).setHours(0, 0, 0, 0) -
-                      new Date().setHours(0, 0, 0, 0) -
-                      opt.days * 86400000
-                  ) < 86400000;
-            return (
+        <View>
+          <AppText
+            variant="caption"
+            color="secondaryLabel"
+            style={styles.label}
+          >
+            Prioritas
+          </AppText>
+          <View style={styles.row}>
+            {(['low', 'medium', 'high'] as Priority[]).map((p) => (
               <Pressable
-                key={opt.label}
-                onPress={() => setDueDaysFromNow(opt.days)}
-                style={[styles.chip, active && styles.chipOn]}
+                key={p}
+                onPress={() => setPriority(p)}
+                style={[styles.chip, priority === p && styles.chipOn]}
               >
                 <AppText
                   variant="caption"
-                  color={active ? 'onPrimary' : 'label'}
+                  color={priority === p ? 'onPrimary' : 'label'}
                 >
-                  {opt.label}
+                  {p}
                 </AppText>
               </Pressable>
-            );
-          })}
+            ))}
+          </View>
         </View>
-        {dueDate ? (
-          <AppText variant="caption" color="secondaryLabel">
-            {new Date(dueDate).toLocaleString()}
-          </AppText>
-        ) : null}
-      </View>
 
-      <View>
-        <AppText variant="caption" color="secondaryLabel" style={styles.label}>
-          Kategori
-        </AppText>
-        <View style={styles.row}>
-          <Pressable
-            onPress={() => setCategoryId(null)}
-            style={[styles.chip, categoryId == null && styles.chipOn]}
+        <View>
+          <AppText
+            variant="caption"
+            color="secondaryLabel"
+            style={styles.label}
           >
-            <AppText
-              variant="caption"
-              color={categoryId == null ? 'onPrimary' : 'label'}
-            >
-              Tidak ada
+            Tenggat
+          </AppText>
+          <View style={styles.row}>
+            {[
+              { label: 'Tidak ada', days: null as number | null },
+              { label: 'Hari ini', days: 0 },
+              { label: '+1 hari', days: 1 },
+              { label: '+7 hari', days: 7 },
+            ].map((opt) => {
+              const active =
+                opt.days == null
+                  ? dueDate == null
+                  : dueDate != null &&
+                    Math.abs(
+                      new Date(dueDate).setHours(0, 0, 0, 0) -
+                        new Date().setHours(0, 0, 0, 0) -
+                        opt.days * 86400000
+                    ) < 86400000;
+              return (
+                <Pressable
+                  key={opt.label}
+                  onPress={() => setDueDaysFromNow(opt.days)}
+                  style={[styles.chip, active && styles.chipOn]}
+                >
+                  <AppText
+                    variant="caption"
+                    color={active ? 'onPrimary' : 'label'}
+                  >
+                    {opt.label}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+          {dueDate ? (
+            <AppText variant="caption" color="secondaryLabel">
+              {new Date(dueDate).toLocaleString()}
             </AppText>
-          </Pressable>
-          {categories.map((c) => (
+          ) : null}
+        </View>
+
+        <View>
+          <AppText
+            variant="caption"
+            color="secondaryLabel"
+            style={styles.label}
+          >
+            Kategori
+          </AppText>
+          <View style={styles.row}>
             <Pressable
-              key={c.id}
-              onPress={() => setCategoryId(c.id)}
-              style={[styles.chip, categoryId === c.id && styles.chipOn]}
+              onPress={() => setCategoryId(null)}
+              style={[styles.chip, categoryId == null && styles.chipOn]}
             >
               <AppText
                 variant="caption"
-                color={categoryId === c.id ? 'onPrimary' : 'label'}
+                color={categoryId == null ? 'onPrimary' : 'label'}
               >
-                {c.name}
+                Tidak ada
               </AppText>
             </Pressable>
-          ))}
-        </View>
-      </View>
-
-      <View>
-        <AppText variant="caption" color="secondaryLabel" style={styles.label}>
-          Tags (max 10)
-        </AppText>
-        <View style={styles.row}>
-          {tags.map((t) => {
-            const on = tagIds.includes(t.id);
-            return (
+            {categories.map((c) => (
               <Pressable
-                key={t.id}
-                onPress={() => {
-                  setTagIds((prev) =>
-                    on
-                      ? prev.filter((x) => x !== t.id)
-                      : prev.length >= 10
-                        ? prev
-                        : [...prev, t.id]
-                  );
-                }}
-                style={[styles.chip, on && styles.chipOn]}
+                key={c.id}
+                onPress={() => setCategoryId(c.id)}
+                style={[styles.chip, categoryId === c.id && styles.chipOn]}
               >
-                <AppText variant="caption" color={on ? 'onPrimary' : 'label'}>
-                  {t.name}
+                <AppText
+                  variant="caption"
+                  color={categoryId === c.id ? 'onPrimary' : 'label'}
+                >
+                  {c.name}
                 </AppText>
               </Pressable>
-            );
-          })}
+            ))}
+          </View>
         </View>
-      </View>
 
-      <Button
-        title={isEdit ? 'Simpan' : 'Tambah'}
-        variant="filled"
-        loading={pending}
-        disabled={!isValid || pending}
-        onPress={handleSubmit(onSubmit)}
-      />
-    </ScrollView>
+        <View>
+          <AppText
+            variant="caption"
+            color="secondaryLabel"
+            style={styles.label}
+          >
+            Tags (max 10)
+          </AppText>
+          <View style={styles.row}>
+            {tags.map((t) => {
+              const on = tagIds.includes(t.id);
+              return (
+                <Pressable
+                  key={t.id}
+                  onPress={() => {
+                    setTagIds((prev) =>
+                      on
+                        ? prev.filter((x) => x !== t.id)
+                        : prev.length >= 10
+                          ? prev
+                          : [...prev, t.id]
+                    );
+                  }}
+                  style={[styles.chip, on && styles.chipOn]}
+                >
+                  <AppText variant="caption" color={on ? 'onPrimary' : 'label'}>
+                    {t.name}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <Button
+          title={isEdit ? 'Simpan' : 'Tambah'}
+          variant="filled"
+          loading={pending}
+          disabled={!isValid || pending}
+          onPress={handleSubmit(onSubmit)}
+        />
+      </ScrollView>
+    </View>
   );
 }

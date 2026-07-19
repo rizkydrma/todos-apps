@@ -9,11 +9,13 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { springConfig } from '@/theme';
+import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  View,
   type PressableProps,
-  ViewStyle,
+  type ViewStyle,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -31,6 +33,8 @@ export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   variant?: ButtonVariant;
   /** True = spinner di dalam tombol, tidak bisa ditekan. */
   loading?: boolean;
+  /** Ikon kiri (mis. GoogleLogo) di samping title. */
+  leftIcon?: ReactNode;
   style?: ViewStyle | ViewStyle[];
 };
 
@@ -44,6 +48,7 @@ export function Button({
   variant = 'filled',
   disabled,
   loading = false,
+  leftIcon,
   onPress,
   style,
   ...rest
@@ -61,6 +66,8 @@ export function Button({
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
       minHeight: t.size.controlHeight,
+      flexDirection: 'row' as const,
+      gap: t.spacing.sm,
     },
     plain: {
       backgroundColor: 'transparent',
@@ -138,9 +145,12 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={spinnerColor} />
       ) : (
-        <AppText variant="label" color={textColor}>
-          {title}
-        </AppText>
+        <>
+          {leftIcon ? <View>{leftIcon}</View> : null}
+          <AppText variant="label" color={textColor}>
+            {title}
+          </AppText>
+        </>
       )}
     </AnimatedPressable>
   );

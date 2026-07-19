@@ -1,24 +1,30 @@
 /**
- * Screen verifikasi email via OTP 6 digit.
+ * Screen verifikasi email via OTP 6 digit (quiet Apple auth).
  *
  * Params: email (dari register success atau login EMAIL_NOT_VERIFIED).
- * - Submit → useVerifyEmail → commitSession → home
- * - Resend → useResendVerification + cooldown lokal 60 detik
+ * AuthEntrance micro-motion; Lucide Mail hint di header.
  */
-import { Button, OtpInput, Screen, TextButton } from '@/components/ui';
+import {
+  AuthEntrance,
+  Button,
+  OtpInput,
+  Screen,
+  TextButton,
+} from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
+import { useAppTheme } from '@/context/ThemeContext';
 import { authCopy } from '@/features/auth/auth-copy';
 import { useResendVerification } from '@/features/auth/hooks/useResendVerification';
 import { useVerifyEmail } from '@/features/auth/hooks/useVerifyEmail';
 import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Mail } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 import z from 'zod';
 
-/** Cooldown resend di client (selaras server min 60s). */
 const RESEND_COOLDOWN_SECONDS = 60;
 
 const verifySchema = z.object({
@@ -30,9 +36,6 @@ const verifySchema = z.object({
 
 type VerifyFormValues = z.infer<typeof verifySchema>;
 
-/**
- * Normalisasi param expo-router: bisa string | string[] | undefined.
- */
 function firstParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0] ?? '';
   return value ?? '';
@@ -40,6 +43,7 @@ function firstParam(value: string | string[] | undefined): string {
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
+  const { theme } = useAppTheme();
   const params = useLocalSearchParams<{ email?: string | string[] }>();
   const email = useMemo(
     () => firstParam(params.email).trim().toLowerCase(),
@@ -48,8 +52,6 @@ export default function VerifyEmailScreen() {
 
   const verifyEmail = useVerifyEmail();
   const resend = useResendVerification();
-
-  // Countdown detik tersisa untuk disable tombol resend
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
 
   useEffect(() => {
@@ -81,7 +83,6 @@ export default function VerifyEmailScreen() {
       { email },
       {
         onSuccess: () => {
-          // Restart cooldown lokal setelah request sukses
           setCooldown(RESEND_COOLDOWN_SECONDS);
         },
       }
@@ -111,53 +112,65 @@ export default function VerifyEmailScreen() {
       safe={{ top: true, bottom: true }}
       contentStyle={styles.content}
     >
-      <View style={styles.header}>
-        <AppText variant="title">{authCopy.verify.title}</AppText>
-        <AppText
-          variant="subtitle"
-          color="secondaryLabel"
-          style={styles.subtitle}
-        >
-          {authCopy.verify.subtitle(email)}
-        </AppText>
-      </View>
+      <AuthEntrance delayMs={0}>
+        <View style={styles.header}>
+          <View
+            style={[
+              styles.iconBadge,
+              { backgroundColor: theme.colors.secondarySystemFill },
+            ]}
+          >
+            <Mail size={28} color={theme.colors.primary} strokeWidth={2} />
+          </View>
+          <AppText variant="title">{authCopy.verify.title}</AppText>
+          <AppText
+            variant="subtitle"
+            color="secondaryLabel"
+            style={styles.subtitle}
+          >
+            {authCopy.verify.subtitle(email)}
+          </AppText>
+        </View>
+      </AuthEntrance>
 
-      <View>
-        <OtpInput
-          control={control}
-          name="code"
-          length={6}
-          error={errors.code?.message}
-          accessibilityLabel={authCopy.verify.codeLabel}
-          onSubmitEditing={handleSubmit(onSubmit)}
-        />
+      <AuthEntrance delayMs={80}>
+        <View>
+          <OtpInput
+            control={control}
+            name="code"
+            length={6}
+            error={errors.code?.message}
+            accessibilityLabel={authCopy.verify.codeLabel}
+            onSubmitEditing={handleSubmit(onSubmit)}
+          />
 
-        <Button
-          title={authCopy.verify.submit}
-          onPress={handleSubmit(onSubmit)}
-          disabled={!isValid || verifyEmail.isPending}
-          loading={verifyEmail.isPending}
-          style={styles.submit}
-        />
+          <Button
+            title={authCopy.verify.submit}
+            onPress={handleSubmit(onSubmit)}
+            disabled={!isValid || verifyEmail.isPending}
+            loading={verifyEmail.isPending}
+            style={styles.submit}
+          />
 
-        <Button
-          title={
-            cooldown > 0
-              ? authCopy.verify.resendCooldown(cooldown)
-              : authCopy.verify.resend
-          }
-          variant="plain"
-          onPress={onResend}
-          disabled={cooldown > 0 || resend.isPending || verifyEmail.isPending}
-          loading={resend.isPending}
-          style={styles.resend}
-        />
+          <Button
+            title={
+              cooldown > 0
+                ? authCopy.verify.resendCooldown(cooldown)
+                : authCopy.verify.resend
+            }
+            variant="plain"
+            onPress={onResend}
+            disabled={cooldown > 0 || resend.isPending || verifyEmail.isPending}
+            loading={resend.isPending}
+            style={styles.resend}
+          />
 
-        <TextButton
-          title={authCopy.verify.backToLogin}
-          onPress={() => router.replace('/(auth)/login')}
-        />
-      </View>
+          <TextButton
+            title={authCopy.verify.backToLogin}
+            onPress={() => router.replace('/(auth)/login')}
+          />
+        </View>
+      </AuthEntrance>
     </Screen>
   );
 }
@@ -172,6 +185,14 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center' as const,
     marginBottom: spacing.xl,
+  },
+  iconBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginBottom: spacing.md,
   },
   subtitle: {
     marginTop: spacing.sm,

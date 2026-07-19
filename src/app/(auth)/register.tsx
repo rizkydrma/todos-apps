@@ -1,26 +1,29 @@
 /**
- * Screen registrasi akun baru.
+ * Screen registrasi akun baru (quiet Apple auth).
  *
- * - Zod: name, email, password min 6, confirmPassword harus cocok (refine)
- * - Auth guard di root Stack.Protected (hanya mount saat unauthenticated)
- * - useRegister mutation → navigate verify-email (belum ada session)
- * - Focus chain: name → email → password → confirm → submit
+ * - Zod: name, email, password min 6, confirmPassword cocok
+ * - Lucide icons + AuthEntrance micro-motion
+ * - useRegister → verify-email (belum ada session)
  */
-import { Button, Screen, TextButton, TextField } from '@/components/ui';
+import {
+  AuthEntrance,
+  Button,
+  Screen,
+  TextButton,
+  TextField,
+} from '@/components/ui';
 import { AppText } from '@/components/ui/AppText';
+import { useAppTheme } from '@/context/ThemeContext';
 import { useRegister } from '@/features/auth/hooks/useRegister';
 import { spacing } from '@/theme/tokens';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
+import { Lock, Mail, User } from 'lucide-react-native';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { StyleSheet, TextInput, View } from 'react-native';
 import z from 'zod';
 
-/**
- * Schema register + refine password === confirmPassword.
- * path: ['confirmPassword'] → error muncul di field konfirmasi.
- */
 const registerSchema = z
   .object({
     name: z.string().min(1, 'Nama tidak boleh kosong'),
@@ -37,11 +40,12 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { theme } = useAppTheme();
   const register = useRegister();
-  // Refs untuk keyboard "next" antar field
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
+  const iconColor = theme.colors.secondaryLabel;
 
   const {
     control,
@@ -58,7 +62,6 @@ export default function RegisterScreen() {
     mode: 'onChange',
   });
 
-  /** Kirim name/email/password saja (confirm tidak dikirim ke API). */
   const onSubmit = (data: RegisterFormValues) => {
     register.mutate({
       name: data.name,
@@ -75,77 +78,86 @@ export default function RegisterScreen() {
       safe={{ top: true, bottom: true }}
       contentStyle={styles.content}
     >
-      <View style={styles.logoContainer}>
-        <AppText variant="title">Buat Akun</AppText>
-        <AppText
-          variant="subtitle"
-          color="secondaryLabel"
-          style={styles.subtitle}
-        >
-          Gabung bersama sekarang
-        </AppText>
-      </View>
+      <AuthEntrance delayMs={0}>
+        <View style={styles.logoContainer}>
+          <AppText variant="title">Buat Akun</AppText>
+          <AppText
+            variant="subtitle"
+            color="secondaryLabel"
+            style={styles.subtitle}
+          >
+            Gabung bersama sekarang
+          </AppText>
+        </View>
+      </AuthEntrance>
 
-      <View>
-        <TextField
-          control={control}
-          name="name"
-          placeholder="Nama Lengkap"
-          returnKeyType="next"
-          autoCapitalize="words"
-          error={errors.name?.message}
-          submitBehavior="submit"
-          onSubmitEditing={() => emailInputRef.current?.focus()}
-        />
+      <AuthEntrance delayMs={80}>
+        <View>
+          <TextField
+            control={control}
+            name="name"
+            placeholder="Nama Lengkap"
+            returnKeyType="next"
+            autoCapitalize="words"
+            error={errors.name?.message}
+            submitBehavior="submit"
+            onSubmitEditing={() => emailInputRef.current?.focus()}
+            leftIcon={<User size={20} color={iconColor} strokeWidth={2} />}
+          />
 
-        <TextField
-          innerRef={emailInputRef}
-          control={control}
-          name="email"
-          placeholder="Email"
-          error={errors.email?.message}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={() => passwordInputRef.current?.focus()}
-        />
+          <TextField
+            innerRef={emailInputRef}
+            control={control}
+            name="email"
+            placeholder="Email"
+            error={errors.email?.message}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => passwordInputRef.current?.focus()}
+            leftIcon={<Mail size={20} color={iconColor} strokeWidth={2} />}
+          />
 
-        <TextField
-          innerRef={passwordInputRef}
-          control={control}
-          name="password"
-          placeholder="Password"
-          error={errors.password?.message}
-          secureTextEntry
-          returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
-        />
+          <TextField
+            innerRef={passwordInputRef}
+            control={control}
+            name="password"
+            placeholder="Password"
+            error={errors.password?.message}
+            secureTextEntry
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+            leftIcon={<Lock size={20} color={iconColor} strokeWidth={2} />}
+          />
 
-        <TextField
-          innerRef={confirmPasswordInputRef}
-          control={control}
-          name="confirmPassword"
-          placeholder="Konfirmasi Password"
-          error={errors.confirmPassword?.message}
-          secureTextEntry
-          returnKeyType="go"
-          onSubmitEditing={handleSubmit(onSubmit)}
-        />
+          <TextField
+            innerRef={confirmPasswordInputRef}
+            control={control}
+            name="confirmPassword"
+            placeholder="Konfirmasi Password"
+            error={errors.confirmPassword?.message}
+            secureTextEntry
+            returnKeyType="go"
+            onSubmitEditing={handleSubmit(onSubmit)}
+            leftIcon={<Lock size={20} color={iconColor} strokeWidth={2} />}
+          />
 
-        <Button
-          title="Daftar Sekarang"
-          onPress={handleSubmit(onSubmit)}
-          disabled={!isValid || register.isPending}
-          style={styles.submit}
-        />
+          <Button
+            title="Daftar Sekarang"
+            onPress={handleSubmit(onSubmit)}
+            disabled={!isValid || register.isPending}
+            loading={register.isPending}
+            style={styles.submit}
+          />
 
-        <TextButton
-          title="Sudah punya akun? Login disini"
-          onPress={() => router.back()}
-        />
-      </View>
+          <TextButton
+            title="Sudah punya akun? Login disini"
+            onPress={() => router.back()}
+          />
+        </View>
+      </AuthEntrance>
     </Screen>
   );
 }

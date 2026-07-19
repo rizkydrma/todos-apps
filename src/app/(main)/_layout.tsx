@@ -22,7 +22,14 @@ export default function MainLayout() {
         name="todo-form"
         options={{
           presentation: 'modal',
-          title: 'Todo',
+          // Title/close lewat PageHeader di screen — konsisten tab roots
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="users"
+        options={{
+          title: 'Users',
           headerShown: true,
         }}
       />
