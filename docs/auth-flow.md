@@ -19,19 +19,19 @@ Terakhir diselaraskan dengan kode: **Juli 2026**.
 
 ## 1. Ringkasan 30 detik
 
-| Pertanyaan                       | Jawaban di app ini                                                             |
-| -------------------------------- | ------------------------------------------------------------------------------ |
-| Siapa buktikan identitas Google? | Native Google → **Firebase exchange** → Firebase ID token                      |
-| Siapa bikin Auth Session?        | Backend (`/auth/login`, `/auth/verify-email`, `/auth/google`, `/auth/refresh`) |
-| Register langsung session?       | **Tidak** — navigate `/(auth)/verify-email` (no `commitSession`)               |
-| Login unverified?                | Backend 403 `EMAIL_NOT_VERIFIED` → app buka verify-email                       |
-| Body `/auth/google`?             | `{ idToken }` = **Firebase** JWT, bukan Google OAuth murni                     |
-| Token untuk API?                 | Backend **Access Token** (Bearer) + **Refresh Token**                          |
-| Session disimpan di mana?        | Memory (`auth-session`) + SecureStore                                          |
-| Setelah login / verify sukses?   | `commitSession` → `router.replace('/(main)/home')`                             |
-| Restart app?                     | Hydrate SecureStore → `POST /auth/refresh` jika ada refresh                    |
-| Email/password pakai Firebase?   | **Tidak** — hash di D1, session dari backend                                   |
-| Firebase client untuk apa?       | **Wajib** di path Google (exchange). Bukan Bearer API                          |
+| Pertanyaan                       | Jawaban di app ini                                                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Siapa buktikan identitas Google? | Native Google → **Firebase exchange** → Firebase ID token                                                                                               |
+| Siapa bikin Auth Session?        | Backend (`/auth/login`, `/auth/verify-email`, `/auth/google`, `/auth/refresh`)                                                                          |
+| Register langsung session?       | **Tidak** — navigate `/(auth)/verify-email` (no `commitSession`)                                                                                        |
+| Login unverified?                | Backend 403 `EMAIL_NOT_VERIFIED` → app buka verify-email                                                                                                |
+| Body `/auth/google`?             | `{ idToken }` = **Firebase** JWT, bukan Google OAuth murni                                                                                              |
+| Token untuk API?                 | Backend **Access Token** (Bearer) + **Refresh Token**                                                                                                   |
+| Session disimpan di mana?        | Memory (`auth-session`) + SecureStore                                                                                                                   |
+| Setelah login / verify sukses?   | `commitSession` → `router.replace('/(main)/home')`                                                                                                      |
+| Restart app?                     | Hydrate SecureStore → `POST /auth/refresh` jika ada refresh; **native splash tetap tampil sampai status lepas `bootstrapping`** (`src/app/_layout.tsx`) |
+| Email/password pakai Firebase?   | **Tidak** — hash di D1, session dari backend                                                                                                            |
+| Firebase client untuk apa?       | **Wajib** di path Google (exchange). Bukan Bearer API                                                                                                   |
 
 Prinsip: **Identity proof ≠ Auth Session.**  
 Backend detail: [service/docs/auth.md](../../service/docs/auth.md).  
