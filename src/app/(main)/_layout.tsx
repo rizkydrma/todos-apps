@@ -1,5 +1,6 @@
 /**
- * Stack privat (main): tabs + form sheet create/edit todo.
+ * Stack privat (main): tabs + users admin.
+ * Create/edit todo = floating SheetScaffold di screen (bukan stack modal).
  * Auth guard di root Stack.Protected.
  */
 import { useAppTheme } from '@/context/ThemeContext';
@@ -18,14 +19,6 @@ export default function MainLayout() {
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="todo-form"
-        options={{
-          presentation: 'modal',
-          // Title/close lewat PageHeader di screen — konsisten tab roots
-          headerShown: false,
-        }}
-      />
       <Stack.Screen
         name="users"
         options={{

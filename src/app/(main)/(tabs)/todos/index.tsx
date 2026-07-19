@@ -1,6 +1,7 @@
 /**
  * Tab Todos: infinite list + filter drawer + swipe row.
- * Aksi per-item: full-swipe selesai/hapus (otomatis), pensil/tap edit.
+ * Create: center + tab bar (TodoCreateProvider).
+ * Edit: local TodoFormDrawer.
  */
 import {
   AppText,
@@ -9,7 +10,6 @@ import {
   Screen,
   usePageHeaderCollapse,
 } from '@/components/ui';
-import { useFloatingTabBarInset } from '@/components/navigation/FloatingPillTabBar';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useCategories } from '@/features/categories/queries/useCategories';
 import { useTags } from '@/features/tags/queries/useTags';
@@ -19,6 +19,7 @@ import {
   TodoFilterDrawer,
   type TodoFilterValues,
 } from '@/features/todos/components/TodoFilterDrawer';
+import { TodoFormDrawer } from '@/features/todos/components/TodoFormDrawer';
 import { TodoSwipeRow } from '@/features/todos/components/TodoSwipeRow';
 import { groupTodosByDue } from '@/features/todos/lib/dueSections';
 import {
@@ -34,8 +35,7 @@ import type { TodoWithRelations } from '@/features/todos/types';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { confirmDestructive } from '@/lib/confirm';
 import { hapticCommit } from '@/lib/haptics';
-import { useRouter } from 'expo-router';
-import { ListFilter, Plus } from 'lucide-react-native';
+import { ListFilter } from 'lucide-react-native';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -48,14 +48,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 
 export default function TodosScreen() {
-  const router = useRouter();
   const { theme } = useAppTheme();
   const { scrollY, scrollHandler } = usePageHeaderCollapse();
-  const tabInset = useFloatingTabBarInset();
 
   const [filtersState, setFiltersState] =
     useState<TodoFilterValues>(DEFAULT_TODO_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  /** Edit only — create di tab bar (TodoCreateProvider). */
+  const [editId, setEditId] = useState<string | null>(null);
 
   const filters: TodosInfiniteFilters = useMemo(
     () => ({
@@ -93,26 +93,12 @@ export default function TodosScreen() {
       overflow: 'hidden' as const,
       marginBottom: t.spacing.sm,
     },
-    fabCol: {
+    // Scene sudah paddingBottom: tabInset — filter FAB gap token (E1 + G1).
+    // Create = center + tab bar (F1: no FAB +).
+    fabFilter: {
       position: 'absolute' as const,
       right: t.spacing.lg,
-      gap: t.spacing.sm,
-      alignItems: 'center' as const,
-    },
-    fab: {
-      width: 56,
-      height: 56,
-      borderRadius: t.radius.full,
-      backgroundColor: t.colors.primary,
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
-      shadowColor: t.colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.18,
-      shadowRadius: 8,
-      elevation: 4,
-    },
-    fabSecondary: {
+      bottom: t.spacing.sm,
       width: 48,
       height: 48,
       borderRadius: t.radius.full,
@@ -176,12 +162,7 @@ export default function TodosScreen() {
       onDelete={() => {
         void onDelete(item);
       }}
-      onEdit={() =>
-        router.push({
-          pathname: '/(main)/todo-form',
-          params: { id: item.id },
-        })
-      }
+      onEdit={() => setEditId(item.id)}
     />
   );
 
@@ -223,7 +204,7 @@ export default function TodosScreen() {
                     color="secondaryLabel"
                     style={styles.empty}
                   >
-                    Belum ada todo. Ketuk + untuk menambah.
+                    Belum ada todo. Ketuk + di tab bar untuk menambah.
                   </AppText>
                 ) : null
               }
@@ -251,44 +232,29 @@ export default function TodosScreen() {
             />
           )}
 
-          <View style={[styles.fabCol, { bottom: tabInset + 8 }]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Filter todo"
-              style={styles.fabSecondary}
-              onPress={() => setFilterOpen(true)}
-            >
-              <ListFilter
-                size={22}
-                color={theme.colors.label}
-                strokeWidth={2.2}
-              />
-              {activeFilterCount > 0 ? (
-                <View style={styles.fabBadge}>
-                  <AppText
-                    variant="caption"
-                    color="onPrimary"
-                    style={{ fontSize: 11, lineHeight: 14 }}
-                  >
-                    {activeFilterCount}
-                  </AppText>
-                </View>
-              ) : null}
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Tambah todo"
-              style={styles.fab}
-              onPress={() => router.push('/(main)/todo-form')}
-            >
-              <Plus
-                size={28}
-                color={theme.colors.onPrimary}
-                strokeWidth={2.4}
-              />
-            </Pressable>
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Filter todo"
+            style={styles.fabFilter}
+            onPress={() => setFilterOpen(true)}
+          >
+            <ListFilter
+              size={22}
+              color={theme.colors.label}
+              strokeWidth={2.2}
+            />
+            {activeFilterCount > 0 ? (
+              <View style={styles.fabBadge}>
+                <AppText
+                  variant="caption"
+                  color="onPrimary"
+                  style={{ fontSize: 11, lineHeight: 14 }}
+                >
+                  {activeFilterCount}
+                </AppText>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
 
         <TodoFilterDrawer
@@ -303,6 +269,13 @@ export default function TodosScreen() {
           onApply={setFiltersState}
           categories={categories}
           tags={tags}
+        />
+
+        <TodoFormDrawer
+          key={editId ? `edit-${editId}` : 'edit-closed'}
+          visible={editId != null}
+          todoId={editId}
+          onClose={() => setEditId(null)}
         />
       </Screen>
     </GestureHandlerRootView>

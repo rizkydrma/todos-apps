@@ -13,6 +13,7 @@ export {
 } from './Badge';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
+export { SheetScaffold, type SheetScaffoldProps } from './SheetScaffold';
 export { ConfirmDialogHost } from './ConfirmDialogHost';
 export { GoogleLogo, type GoogleLogoProps } from './GoogleLogo';
 export {

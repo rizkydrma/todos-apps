@@ -1,12 +1,14 @@
 /**
- * Floating capsule tab bar.
+ * Floating capsule tab bar — 3 slot: Home | + (create) | Profile.
  *
- * Dark: solid theme fill (#1C1C1E) — NO BlurView/Glass (bocor putih vs app theme).
- * Light: theme fill + optional BlurView light.
+ * Pill **hug content** (bukan full-bleed) supaya Home/Profile proporsional.
+ * Center + lebih besar, **standalone** — menonjol di atas tinggi pill.
+ *
+ * + = action (bukan tab), tanpa sliding indicator.
+ * Create lewat useTodoCreate() di TodoCreateProvider.
  */
-import { InitialsAvatar } from '@/components/ui';
-import { useAuth } from '@/context/AuthContext';
 import { useAppTheme } from '@/context/ThemeContext';
+import { useTodoCreate } from '@/features/todos/context/TodoCreateContext';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useReducedTransparency } from '@/hooks/useReducedTransparency';
 import { hapticCommit } from '@/lib/haptics';
@@ -17,7 +19,7 @@ import {
 } from '@/navigation/mainTabs';
 import { springConfig } from '@/theme';
 import { BlurView } from 'expo-blur';
-import { House, LayoutGrid, Search, Send } from 'lucide-react-native';
+import { House, Plus, User } from 'lucide-react-native';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   LayoutChangeEvent,
@@ -38,7 +40,6 @@ type TabRoute = { key: string; name: string };
 
 /**
  * Props struktural kompatibel dengan React Navigation tabBar callback.
- * Sengaja longgar di emit/navigate agar assignable tanpa `as unknown as`.
  */
 export type FloatingPillTabBarProps = {
   state: {
@@ -56,12 +57,27 @@ export type FloatingPillTabBarProps = {
   };
 };
 
-/** Tinggi area ikon di dalam pill (tanpa safe-area). */
-export const PILL_BAR_CONTENT_HEIGHT = 58;
-/** Margin horizontal floating pill. */
-export const PILL_BAR_MARGIN_H = 20;
+/** Tinggi kapsul tab (Home / Profile) — tanpa protrusion +. */
+export const PILL_BAR_CONTENT_HEIGHT = 52;
 /** Margin di atas home indicator. */
 export const PILL_BAR_MARGIN_BOTTOM = 10;
+/** Lebar hit-target tiap tab (fixed — bukan flex full-bleed). */
+const TAB_SLOT_WIDTH = 56;
+/** Celah tengah di dalam pill untuk + yang overlapping. */
+const CENTER_GAP = 76;
+/** Padding horizontal dalam pill. */
+const PILL_PAD_H = 6;
+/** Diameter tombol + (lebih besar dari pill). */
+const PLUS_SIZE = 60;
+/** Seberapa jauh puncak + di atas tepi atas pill. */
+const PLUS_PROTRUSION = 18;
+/** Ikon + di dalam circle. */
+const PLUS_ICON = 28;
+
+/** Tinggi total dock (pill + bagian + yang menjulang). */
+const DOCK_HEIGHT = PILL_BAR_CONTENT_HEIGHT + PLUS_PROTRUSION;
+/** bottom offset + di dalam dock (dari bawah). */
+const PLUS_BOTTOM = PILL_BAR_CONTENT_HEIGHT + PLUS_PROTRUSION - PLUS_SIZE;
 
 const TAB_ORDER = MAIN_TABS.map((t) => t.name);
 const TAB_A11Y: Record<MainTabName, string> = Object.fromEntries(
@@ -69,25 +85,17 @@ const TAB_A11Y: Record<MainTabName, string> = Object.fromEntries(
 ) as Record<MainTabName, string>;
 
 /**
- * Total inset bawah yang harus dihormati konten tab
- * agar list tidak tertutup pill.
+ * Total inset bawah konten tab — pill + protrusion + + safe area.
  */
 export function useFloatingTabBarInset(): number {
   const insets = useSafeAreaInsets();
-  return (
-    PILL_BAR_CONTENT_HEIGHT +
-    PILL_BAR_MARGIN_BOTTOM +
-    Math.max(insets.bottom, 8) +
-    8
-  );
+  return DOCK_HEIGHT + PILL_BAR_MARGIN_BOTTOM + Math.max(insets.bottom, 8) + 8;
 }
 
 type SlotLayout = { x: number; width: number };
 
 /**
  * Material pill — fill **selalu** dari `fillColor` (theme token).
- * Dark mode: no BlurView/GlassView (native blur bocor putih vs app theme).
- * Light mode: optional BlurView di atas fill putih (boleh gagal; fill tetap ada).
  */
 function PillGlassMaterial({
   isDark,
@@ -95,11 +103,9 @@ function PillGlassMaterial({
   reducedTransparency,
 }: {
   isDark: boolean;
-  /** Hex solid dari theme — sumber kebenaran warna pill. */
   fillColor: string;
   reducedTransparency: boolean;
 }) {
-  // Dark / reduced transparency: solid only — deterministic
   if (isDark || reducedTransparency) {
     return (
       <View
@@ -109,8 +115,6 @@ function PillGlassMaterial({
     );
   }
 
-  // Light: solid fill + iOS native blur only.
-  // Android BlurView.dimezis* butuh blurTarget (API baru) — skip agar no warn/fallback.
   return (
     <>
       <View
@@ -132,7 +136,69 @@ function PillGlassMaterial({
 }
 
 /**
- * Custom tabBar Expo Router / React Navigation — floating glass pill.
+ * Center + — primary action, diameter > tinggi pill, menjulang ke atas.
+ */
+function CenterCreateButton({ reducedMotion }: { reducedMotion: boolean }) {
+  const { theme, isDarkMode } = useAppTheme();
+  const { openCreate } = useTodoCreate();
+  const scale = useSharedValue(1);
+  const spring = springConfig(theme.motion.spring.snappy);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  // elevation + harus > pill (Android stacking); zIndex untuk iOS
+  const plusShadow = Platform.select({
+    ios: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: isDarkMode ? 0.4 : 0.2,
+      shadowRadius: 12,
+    },
+    android: { elevation: 20 },
+    default: {},
+  });
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Tambah todo"
+      onPress={() => {
+        void hapticCommit('medium');
+        openCreate();
+      }}
+      onPressIn={() => {
+        if (reducedMotion) return;
+        scale.set(withSpring(0.9, spring));
+      }}
+      onPressOut={() => {
+        if (reducedMotion) return;
+        scale.set(withSpring(1, spring));
+      }}
+      hitSlop={6}
+      style={styles.plusPressable}
+    >
+      <Animated.View
+        style={[
+          styles.plusCircle,
+          plusShadow,
+          { backgroundColor: theme.colors.primary },
+          animStyle,
+        ]}
+      >
+        <Plus
+          size={PLUS_ICON}
+          color={theme.colors.onPrimary}
+          strokeWidth={2.6}
+        />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+/**
+ * Custom tabBar Expo Router — floating pill compact: Home | + raised | Profile.
  */
 export function FloatingPillTabBar({
   state,
@@ -140,11 +206,9 @@ export function FloatingPillTabBar({
   navigation,
 }: FloatingPillTabBarProps) {
   const { theme, isDarkMode } = useAppTheme();
-  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
   const reducedTransparency = useReducedTransparency();
-  const [trackWidth, setTrackWidth] = useState(0);
   const [slotLayouts, setSlotLayouts] = useState<
     Partial<Record<MainTabName, SlotLayout>>
   >({});
@@ -163,20 +227,21 @@ export function FloatingPillTabBar({
     });
   }, [descriptors, state.routes]);
 
+  const homeRoute = visibleRoutes.find((r) => r.name === 'todos/index');
+  const profileRoute = visibleRoutes.find((r) => r.name === 'profile/index');
+
   const activeRoute = state.routes[state.index];
   const activeName = activeRoute?.name ?? '';
-  const activeVisibleIndex = Math.max(
-    0,
-    visibleRoutes.findIndex((r) => r.name === activeName)
-  );
+  const activeTabName: MainTabName | null = isMainTabName(activeName)
+    ? activeName
+    : null;
 
   const indicatorX = useSharedValue(0);
   const indicatorW = useSharedValue(0);
 
   useEffect(() => {
-    const raw = visibleRoutes[activeVisibleIndex]?.name;
-    const key = raw && isMainTabName(raw) ? raw : undefined;
-    const layout = key ? slotLayouts[key] : undefined;
+    if (!activeTabName) return;
+    const layout = slotLayouts[activeTabName];
     if (!layout) return;
     const spring = springConfig(theme.motion.spring.snappy);
     if (reducedMotion) {
@@ -191,13 +256,12 @@ export function FloatingPillTabBar({
     indicatorX.set(withSpring(layout.x, spring));
     indicatorW.set(withSpring(layout.width, spring));
   }, [
-    activeVisibleIndex,
+    activeTabName,
     indicatorW,
     indicatorX,
     reducedMotion,
     slotLayouts,
     theme.motion,
-    visibleRoutes,
   ]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
@@ -206,7 +270,6 @@ export function FloatingPillTabBar({
   }));
 
   const bottomOffset = PILL_BAR_MARGIN_BOTTOM + Math.max(insets.bottom, 8);
-  // Session theme (ink toggle), bukan system appearance
   const isDark = isDarkMode;
 
   const activeIconColor = isDark ? '#FFFFFF' : theme.colors.label;
@@ -214,9 +277,7 @@ export function FloatingPillTabBar({
     ? 'rgba(235,235,245,0.6)'
     : theme.colors.secondaryLabel;
 
-  // Active slot dark = fill lebih gelap (bukan frost putih)
   const highlightBg = isDark ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0.06)';
-
   const borderColor = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)';
   const outerRing = isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.08)';
 
@@ -252,27 +313,15 @@ export function FloatingPillTabBar({
     switch (name) {
       case 'todos/index':
         return <House size={size} color={color} strokeWidth={stroke} />;
-      case 'categories/index':
-        return <LayoutGrid size={size} color={color} strokeWidth={stroke} />;
-      case 'tags/index':
-        return <Send size={size} color={color} strokeWidth={stroke} />;
-      case 'search/index':
-        return <Search size={size} color={color} strokeWidth={stroke} />;
       case 'profile/index':
-        return (
-          <InitialsAvatar
-            name={user?.name}
-            email={user?.email}
-            size={28}
-            highlighted={focused}
-          />
-        );
+        return <User size={size} color={color} strokeWidth={stroke} />;
       default:
         return null;
     }
   };
 
-  // Shadow host terpisah dari overflow:hidden clip — shadow RN tidak ter-clip
+  // Pill elevation < plus (Android). Jangan remount pill lewat key tema —
+  // remount bisa me-reset z-order native dan menaruh pill di atas +.
   const floatingShadow = Platform.select({
     ios: {
       shadowColor: '#000000',
@@ -281,33 +330,44 @@ export function FloatingPillTabBar({
       shadowRadius: 24,
     },
     android: {
-      elevation: 12,
+      elevation: 10,
     },
     default: {},
   });
 
-  // Dark: secondarySystemBackground #1C1C1E (bukan putih).
-  // Light: putih semi — token secondarySystemGroupedBackground light = #FFF.
   const pillFill = isDark ? theme.colors.secondarySystemBackground : '#F2F2F7';
+
+  const renderTab = (route: TabRoute | undefined) => {
+    if (!route || !isMainTabName(route.name)) return null;
+    const key = route.name;
+    const isFocused = state.routes[state.index]?.key === route.key;
+    return (
+      <TabSlot
+        key={route.key}
+        label={TAB_A11Y[key]}
+        focused={isFocused}
+        reducedMotion={reducedMotion}
+        onLayout={(e) => onSlotLayout(key, e)}
+        onPress={() => onTabPress(route.name, route.key, isFocused)}
+      >
+        {renderIcon(key, isFocused)}
+      </TabSlot>
+    );
+  };
 
   return (
     <View
       pointerEvents="box-none"
       style={[styles.wrap, { bottom: bottomOffset }]}
     >
-      <View
-        key={isDark ? 'pill-dark' : 'pill-light'}
-        style={[styles.shadowHost, floatingShadow]}
-      >
+      {/* Dock centered — lebar = pill hug content, bukan edge-to-edge */}
+      <View style={styles.dock} pointerEvents="box-none">
         <View
           style={[
             styles.pillOuter,
-            {
-              borderColor: outerRing,
-              backgroundColor: pillFill,
-            },
+            floatingShadow,
+            { borderColor: outerRing, backgroundColor: pillFill },
           ]}
-          onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
         >
           <View
             style={[
@@ -325,7 +385,7 @@ export function FloatingPillTabBar({
             />
 
             <View style={styles.row}>
-              {trackWidth > 0 ? (
+              {activeTabName && slotLayouts[activeTabName] ? (
                 <Animated.View
                   pointerEvents="none"
                   style={[
@@ -342,25 +402,17 @@ export function FloatingPillTabBar({
                 />
               ) : null}
 
-              {visibleRoutes.map((route) => {
-                if (!isMainTabName(route.name)) return null;
-                const key = route.name;
-                const isFocused = state.routes[state.index]?.key === route.key;
-                return (
-                  <TabSlot
-                    key={route.key}
-                    label={TAB_A11Y[key]}
-                    focused={isFocused}
-                    reducedMotion={reducedMotion}
-                    onLayout={(e) => onSlotLayout(key, e)}
-                    onPress={() => onTabPress(route.name, route.key, isFocused)}
-                  >
-                    {renderIcon(key, isFocused)}
-                  </TabSlot>
-                );
-              })}
+              {renderTab(homeRoute)}
+              {/* Spacer — + di-overlay di luar overflow:hidden pill */}
+              <View style={styles.centerGap} pointerEvents="none" />
+              {renderTab(profileRoute)}
             </View>
           </View>
+        </View>
+
+        {/* + di atas pill: zIndex + elevation > pill (fix theme-change stacking) */}
+        <View style={styles.plusHost} pointerEvents="box-none">
+          <CenterCreateButton reducedMotion={reducedMotion} />
         </View>
       </View>
     </View>
@@ -377,7 +429,7 @@ type TabSlotProps = {
 };
 
 /**
- * Satu slot: press scale spring + a11y.
+ * Satu slot tab fixed-width — press scale spring + a11y.
  */
 function TabSlot({
   children,
@@ -396,7 +448,6 @@ function TabSlot({
 
   const spring = springConfig(theme.motion.spring.snappy);
 
-  // Sync scale when focus changes (settle active slightly larger)
   useEffect(() => {
     if (reducedMotion) {
       scale.set(1);
@@ -432,48 +483,38 @@ function TabSlot({
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    left: PILL_BAR_MARGIN_H,
-    right: PILL_BAR_MARGIN_H,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
-  shadowHost: {
-    borderRadius: 999,
+  /** Tinggi = pill + protrusion; pill di bawah, + di tengah atas. */
+  dock: {
+    height: DOCK_HEIGHT,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   pillOuter: {
     borderRadius: 999,
-    // Thin outer stroke for separation over busy content
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 0,
+    // Di bawah + (sibling absolute)
+    zIndex: 0,
   },
   pillClip: {
     height: PILL_BAR_CONTENT_HEIGHT,
     borderRadius: 999,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-  },
-  specularTop: {
-    position: 'absolute',
-    top: 0,
-    left: 12,
-    right: 12,
-    height: StyleSheet.hairlineWidth * 2,
-    borderTopLeftRadius: 999,
-    borderTopRightRadius: 999,
-  },
-  specularBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 16,
-    right: 16,
-    height: StyleSheet.hairlineWidth,
+    // Hug content: 2 tab + gap tengah + pad
+    width: TAB_SLOT_WIDTH * 2 + CENTER_GAP + PILL_PAD_H * 2,
   },
   row: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: PILL_PAD_H,
   },
   slot: {
-    flex: 1,
+    width: TAB_SLOT_WIDTH,
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -484,10 +525,40 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  centerGap: {
+    width: CENTER_GAP,
+    height: '100%',
+  },
+  plusHost: {
+    position: 'absolute',
+    bottom: PLUS_BOTTOM,
+    alignSelf: 'center',
+    width: PLUS_SIZE,
+    height: PLUS_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Harus > pillOuter (zIndex 0 / elevation 10) di semua platform
+    zIndex: 20,
+    elevation: 20,
+  },
+  plusPressable: {
+    width: PLUS_SIZE,
+    height: PLUS_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  plusCircle: {
+    width: PLUS_SIZE,
+    height: PLUS_SIZE,
+    borderRadius: PLUS_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   indicator: {
     position: 'absolute',
-    top: 6,
-    bottom: 6,
+    top: 5,
+    bottom: 5,
     left: 0,
     borderRadius: 999,
   },

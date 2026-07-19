@@ -118,10 +118,10 @@ These are product decisions captured for implementers; prefer ADRs for hard-to-r
 ## Todo Service client (resolved in grilling)
 
 - Scope: **member + admin**
-- Tabs: Todos | Profile (+ Admin tab when admin)
+- Tabs: Home | + (create action) | Profile (no Categories/Tags/Search tabs)
 - Power kit: full fields/filters + session chips + due sections (no multi-select/batch, no calendar month, no saved presets)
 - Server state: TanStack Query; optimistic complete/delete
-- Create/edit: form sheet modal
+- Create: tab-bar center sheet (TodoCreateProvider); edit: local sheet on list
 - List: infinite scroll
 - Deletes: confirm every time
 - Delivery: one vertical plan, phased milestones

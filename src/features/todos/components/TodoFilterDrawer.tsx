@@ -1,8 +1,8 @@
 /**
- * Filter drawer minimalis — chip Badge size sm (food-filter style).
- * Draft state; commit lewat "Terapkan". Akses hanya FAB filter.
+ * Filter drawer — SheetScaffold + chip Badge size sm.
+ * Draft state; commit lewat "Terapkan". Akses dari FAB filter.
  */
-import { AppText, Badge, BottomSheet, Button } from '@/components/ui';
+import { AppText, Badge, Button, SheetScaffold } from '@/components/ui';
 import { useAppTheme } from '@/context/ThemeContext';
 import type { Category } from '@/features/categories/types';
 import type { Tag } from '@/features/tags/types';
@@ -10,7 +10,7 @@ import type { TodosInfiniteFilters } from '@/features/todos/queries/useTodosInfi
 import type { Priority } from '@/features/todos/types';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
 export type StatusFilter = 'all' | 'active' | 'completed';
 
@@ -174,17 +174,6 @@ export function TodoFilterDrawer({
   const hasActiveDraft = countActiveTodoFilters(draft) > 0;
 
   const styles = useThemedStyles((t) => ({
-    header: {
-      paddingHorizontal: t.spacing.lg,
-      paddingBottom: t.spacing.md,
-      flexDirection: 'row' as const,
-      alignItems: 'center' as const,
-      justifyContent: 'space-between' as const,
-    },
-    body: {
-      paddingHorizontal: t.spacing.lg,
-      paddingBottom: t.spacing.md,
-    },
     search: {
       borderRadius: t.radius.full,
       paddingHorizontal: t.spacing.md,
@@ -194,11 +183,6 @@ export function TodoFilterDrawer({
       minHeight: 44,
       marginBottom: t.spacing.lg,
       fontSize: t.fontSize.md,
-    },
-    footer: {
-      paddingHorizontal: t.spacing.lg,
-      paddingTop: t.spacing.sm,
-      paddingBottom: t.spacing.sm,
     },
     applyBtn: {
       width: '100%' as const,
@@ -211,9 +195,11 @@ export function TodoFilterDrawer({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} maxHeightRatio={0.88}>
-      <View style={styles.header}>
-        <AppText variant="headline">Filter</AppText>
+    <SheetScaffold
+      visible={visible}
+      onClose={onClose}
+      title="Filter"
+      trailing={
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Hapus semua filter"
@@ -230,60 +216,8 @@ export function TodoFilterDrawer({
             Clear all
           </AppText>
         </Pressable>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        bounces
-      >
-        <TextInput
-          value={draft.search}
-          onChangeText={(search) => patchDraft({ search })}
-          placeholder="Cari judul..."
-          placeholderTextColor={theme.colors.placeholderText}
-          style={styles.search}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-          autoCorrect={false}
-          autoCapitalize="none"
-          accessibilityLabel="Cari todo"
-        />
-
-        <ChipGroup
-          title="Status"
-          options={STATUS_OPTIONS}
-          value={draft.status}
-          onChange={(status) => patchDraft({ status })}
-        />
-        <ChipGroup
-          title="Prioritas"
-          options={PRIORITY_OPTIONS}
-          value={draft.priority}
-          onChange={(priority) => patchDraft({ priority })}
-        />
-        <ChipGroup
-          title="Kategori"
-          options={categoryOptions}
-          value={draft.categoryId}
-          onChange={(categoryId) => patchDraft({ categoryId })}
-        />
-        <ChipGroup
-          title="Tag"
-          options={tagOptions}
-          value={draft.tagId}
-          onChange={(tagId) => patchDraft({ tagId })}
-        />
-        <ChipGroup
-          title="Urutan"
-          options={SORT_OPTIONS}
-          value={draft.sort ?? '-createdAt'}
-          onChange={(sort) => patchDraft({ sort })}
-        />
-      </ScrollView>
-
-      <View style={styles.footer}>
+      }
+      footer={
         <Button
           title="Terapkan filter"
           variant="filled"
@@ -294,7 +228,51 @@ export function TodoFilterDrawer({
           disabled={!hasChanges}
           style={styles.applyBtn}
         />
-      </View>
-    </BottomSheet>
+      }
+    >
+      <TextInput
+        value={draft.search}
+        onChangeText={(search) => patchDraft({ search })}
+        placeholder="Cari judul..."
+        placeholderTextColor={theme.colors.placeholderText}
+        style={styles.search}
+        returnKeyType="search"
+        clearButtonMode="while-editing"
+        autoCorrect={false}
+        autoCapitalize="none"
+        accessibilityLabel="Cari todo"
+      />
+
+      <ChipGroup
+        title="Status"
+        options={STATUS_OPTIONS}
+        value={draft.status}
+        onChange={(status) => patchDraft({ status })}
+      />
+      <ChipGroup
+        title="Prioritas"
+        options={PRIORITY_OPTIONS}
+        value={draft.priority}
+        onChange={(priority) => patchDraft({ priority })}
+      />
+      <ChipGroup
+        title="Kategori"
+        options={categoryOptions}
+        value={draft.categoryId}
+        onChange={(categoryId) => patchDraft({ categoryId })}
+      />
+      <ChipGroup
+        title="Tag"
+        options={tagOptions}
+        value={draft.tagId}
+        onChange={(tagId) => patchDraft({ tagId })}
+      />
+      <ChipGroup
+        title="Urutan"
+        options={SORT_OPTIONS}
+        value={draft.sort ?? '-createdAt'}
+        onChange={(sort) => patchDraft({ sort })}
+      />
+    </SheetScaffold>
   );
 }
