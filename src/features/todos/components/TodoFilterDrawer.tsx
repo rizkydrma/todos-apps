@@ -1,25 +1,16 @@
 /**
- * Filter drawer todo — floating sheet + control per cardinality opsi.
- *
- * - 2 opsi → segmented
- * - 3+ opsi → list check
- * - Sheet inset (tidak nempel edge) lewat BottomSheet
+ * Filter drawer minimalis — chip Badge size sm (food-filter style).
+ * Draft state; commit lewat "Terapkan". Akses hanya FAB filter.
  */
-import {
-  AppText,
-  BottomSheet,
-  Button,
-  OptionControl,
-  type OptionItem,
-} from '@/components/ui';
+import { AppText, Badge, BottomSheet, Button } from '@/components/ui';
 import { useAppTheme } from '@/context/ThemeContext';
 import type { Category } from '@/features/categories/types';
 import type { Tag } from '@/features/tags/types';
 import type { TodosInfiniteFilters } from '@/features/todos/queries/useTodosInfinite';
 import type { Priority } from '@/features/todos/types';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
-import { useMemo } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 export type StatusFilter = 'all' | 'active' | 'completed';
 
@@ -32,39 +23,95 @@ export type TodoFilterValues = {
   search: string;
 };
 
+export const DEFAULT_TODO_FILTERS: TodoFilterValues = {
+  status: 'active',
+  priority: undefined,
+  categoryId: undefined,
+  tagId: undefined,
+  sort: '-createdAt',
+  search: '',
+};
+
 export type TodoFilterDrawerProps = {
   visible: boolean;
   onClose: () => void;
   values: TodoFilterValues;
-  onChange: (patch: Partial<TodoFilterValues>) => void;
-  onReset: () => void;
+  onApply: (values: TodoFilterValues) => void;
   categories: Category[];
   tags: Tag[];
 };
 
-const STATUS_OPTIONS: OptionItem<StatusFilter>[] = [
-  { value: 'all', label: 'Semua' },
-  { value: 'active', label: 'Aktif' },
-  { value: 'completed', label: 'Selesai' },
-];
-
-const PRIORITY_OPTIONS: OptionItem<Priority | undefined>[] = [
-  { value: undefined, label: 'Semua' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-];
-
-const SORT_OPTIONS: OptionItem<NonNullable<TodosInfiniteFilters['sort']>>[] = [
-  { value: '-createdAt', label: 'Terbaru' },
-  { value: 'dueDate', label: 'Tenggat ↑' },
-  { value: '-dueDate', label: 'Tenggat ↓' },
-  { value: 'priority', label: 'Prioritas' },
-];
+type ChipOption<T> = { value: T; label: string };
 
 /**
- * Hitung filter non-default (badge FAB).
+ * Section + wrap Badge chips (size sm).
  */
+function ChipGroup<T>({
+  title,
+  options,
+  value,
+  onChange,
+}: {
+  title: string;
+  options: ChipOption<T>[];
+  value: T;
+  onChange: (value: T) => void;
+}) {
+  const styles = useThemedStyles((t) => ({
+    section: { marginBottom: t.spacing.lg },
+    title: {
+      marginBottom: t.spacing.sm,
+      fontWeight: '600' as const,
+    },
+    wrap: {
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      gap: t.spacing.xs + 2,
+    },
+  }));
+
+  if (options.length === 0) return null;
+
+  return (
+    <View style={styles.section}>
+      <AppText variant="body" color="label" style={styles.title}>
+        {title}
+      </AppText>
+      <View style={styles.wrap}>
+        {options.map((opt) => (
+          <Badge
+            key={String(opt.label)}
+            label={opt.label}
+            size="sm"
+            selected={Object.is(opt.value, value)}
+            onPress={() => onChange(opt.value)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const STATUS_OPTIONS: ChipOption<StatusFilter>[] = [
+  { value: 'all', label: 'SEMUA' },
+  { value: 'active', label: 'AKTIF' },
+  { value: 'completed', label: 'SELESAI' },
+];
+
+const PRIORITY_OPTIONS: ChipOption<Priority | undefined>[] = [
+  { value: undefined, label: 'SEMUA' },
+  { value: 'low', label: 'LOW' },
+  { value: 'medium', label: 'MEDIUM' },
+  { value: 'high', label: 'HIGH' },
+];
+
+const SORT_OPTIONS: ChipOption<NonNullable<TodosInfiniteFilters['sort']>>[] = [
+  { value: '-createdAt', label: 'TERBARU' },
+  { value: 'dueDate', label: 'TENGGAT ↑' },
+  { value: '-dueDate', label: 'TENGGAT ↓' },
+  { value: 'priority', label: 'PRIORITAS' },
+];
+
 export function countActiveTodoFilters(v: TodoFilterValues): number {
   let n = 0;
   if (v.status !== 'active') n += 1;
@@ -76,47 +123,60 @@ export function countActiveTodoFilters(v: TodoFilterValues): number {
   return n;
 }
 
+function filtersEqual(a: TodoFilterValues, b: TodoFilterValues): boolean {
+  return (
+    a.status === b.status &&
+    a.priority === b.priority &&
+    a.categoryId === b.categoryId &&
+    a.tagId === b.tagId &&
+    a.sort === b.sort &&
+    a.search.trim() === b.search.trim()
+  );
+}
+
 /**
- * Drawer filter — buka dari floating control di Home.
+ * Drawer filter chip — buka hanya dari FAB.
  */
 export function TodoFilterDrawer({
   visible,
   onClose,
   values,
-  onChange,
-  onReset,
+  onApply,
   categories,
   tags,
 }: TodoFilterDrawerProps) {
   const { theme } = useAppTheme();
+  const [draft, setDraft] = useState<TodoFilterValues>(values);
 
-  // "Semua" + items — cardinality menentukan segment vs list
-  const categoryOptions = useMemo<OptionItem<string | undefined>[]>(
+  const categoryOptions = useMemo<ChipOption<string | undefined>[]>(
     () => [
-      { value: undefined, label: 'Semua' },
+      { value: undefined, label: 'SEMUA' },
       ...categories.map((c) => ({
         value: c.id as string | undefined,
-        label: c.name,
+        label: c.name.toUpperCase(),
       })),
     ],
     [categories]
   );
 
-  const tagOptions = useMemo<OptionItem<string | undefined>[]>(
+  const tagOptions = useMemo<ChipOption<string | undefined>[]>(
     () => [
-      { value: undefined, label: 'Semua' },
+      { value: undefined, label: 'SEMUA' },
       ...tags.map((t) => ({
         value: t.id as string | undefined,
-        label: t.name,
+        label: t.name.toUpperCase(),
       })),
     ],
     [tags]
   );
 
+  const hasChanges = !filtersEqual(draft, values);
+  const hasActiveDraft = countActiveTodoFilters(draft) > 0;
+
   const styles = useThemedStyles((t) => ({
     header: {
       paddingHorizontal: t.spacing.lg,
-      paddingBottom: t.spacing.sm,
+      paddingBottom: t.spacing.md,
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
       justifyContent: 'space-between' as const,
@@ -124,37 +184,52 @@ export function TodoFilterDrawer({
     body: {
       paddingHorizontal: t.spacing.lg,
       paddingBottom: t.spacing.md,
-      gap: 0,
     },
     search: {
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.separator,
-      borderRadius: t.radius.lg,
+      borderRadius: t.radius.full,
       paddingHorizontal: t.spacing.md,
-      paddingVertical: t.spacing.sm,
+      paddingVertical: t.spacing.sm + 2,
       color: t.colors.label,
       backgroundColor: t.colors.tertiarySystemFill,
-      minHeight: t.size.controlHeight,
-      marginBottom: t.spacing.md,
+      minHeight: 44,
+      marginBottom: t.spacing.lg,
       fontSize: t.fontSize.md,
     },
     footer: {
-      flexDirection: 'row' as const,
-      gap: t.spacing.sm,
       paddingHorizontal: t.spacing.lg,
       paddingTop: t.spacing.sm,
       paddingBottom: t.spacing.sm,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.separator,
+    },
+    applyBtn: {
+      width: '100%' as const,
+      borderRadius: t.radius.full,
     },
   }));
 
+  const patchDraft = (patch: Partial<TodoFilterValues>) => {
+    setDraft((prev) => ({ ...prev, ...patch }));
+  };
+
   return (
-    <BottomSheet visible={visible} onClose={onClose} maxHeightRatio={0.86}>
+    <BottomSheet visible={visible} onClose={onClose} maxHeightRatio={0.88}>
       <View style={styles.header}>
         <AppText variant="headline">Filter</AppText>
-        {/* Satu aksi tutup — “Terapkan” redundant (filter live) */}
-        <Button title="Selesai" variant="plain" onPress={onClose} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Hapus semua filter"
+          onPress={() => setDraft(DEFAULT_TODO_FILTERS)}
+          hitSlop={8}
+          disabled={!hasActiveDraft}
+          style={{ opacity: hasActiveDraft ? 1 : 0.4 }}
+        >
+          <AppText
+            variant="caption"
+            color="primary"
+            style={{ fontWeight: '600' }}
+          >
+            Clear all
+          </AppText>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -164,9 +239,9 @@ export function TodoFilterDrawer({
         bounces
       >
         <TextInput
-          value={values.search}
-          onChangeText={(search) => onChange({ search })}
-          placeholder="Cari judul todo..."
+          value={draft.search}
+          onChangeText={(search) => patchDraft({ search })}
+          placeholder="Cari judul..."
           placeholderTextColor={theme.colors.placeholderText}
           style={styles.search}
           returnKeyType="search"
@@ -176,52 +251,49 @@ export function TodoFilterDrawer({
           accessibilityLabel="Cari todo"
         />
 
-        {/* 3 opsi → list */}
-        <OptionControl
+        <ChipGroup
           title="Status"
           options={STATUS_OPTIONS}
-          value={values.status}
-          onChange={(status) => onChange({ status })}
+          value={draft.status}
+          onChange={(status) => patchDraft({ status })}
         />
-
-        {/* 4 opsi → list */}
-        <OptionControl
+        <ChipGroup
           title="Prioritas"
           options={PRIORITY_OPTIONS}
-          value={values.priority}
-          onChange={(priority) => onChange({ priority })}
+          value={draft.priority}
+          onChange={(priority) => patchDraft({ priority })}
         />
-
-        {/* 2 total (Semua + 1 item) → segment; 3+ → list (auto) */}
-        <OptionControl
+        <ChipGroup
           title="Kategori"
           options={categoryOptions}
-          value={values.categoryId}
-          onChange={(categoryId) => onChange({ categoryId })}
+          value={draft.categoryId}
+          onChange={(categoryId) => patchDraft({ categoryId })}
         />
-
-        <OptionControl
+        <ChipGroup
           title="Tag"
           options={tagOptions}
-          value={values.tagId}
-          onChange={(tagId) => onChange({ tagId })}
+          value={draft.tagId}
+          onChange={(tagId) => patchDraft({ tagId })}
         />
-
-        <OptionControl
+        <ChipGroup
           title="Urutan"
           options={SORT_OPTIONS}
-          value={values.sort ?? '-createdAt'}
-          onChange={(sort) => onChange({ sort })}
+          value={draft.sort ?? '-createdAt'}
+          onChange={(sort) => patchDraft({ sort })}
         />
       </ScrollView>
 
       <View style={styles.footer}>
-        <View style={{ flex: 1 }}>
-          <Button title="Reset" variant="gray" onPress={onReset} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button title="Selesai" variant="filled" onPress={onClose} />
-        </View>
+        <Button
+          title="Terapkan filter"
+          variant="filled"
+          onPress={() => {
+            onApply(draft);
+            onClose();
+          }}
+          disabled={!hasChanges}
+          style={styles.applyBtn}
+        />
       </View>
     </BottomSheet>
   );

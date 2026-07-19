@@ -4,6 +4,13 @@
  */
 export { AppText, type AppTextProps } from './AppText';
 export { AuthEntrance, type AuthEntranceProps } from './AuthEntrance';
+export {
+  Badge,
+  badgeIconSize,
+  type BadgeProps,
+  type BadgeSize,
+  type BadgeTone,
+} from './Badge';
 export { BottomSheet, type BottomSheetProps } from './BottomSheet';
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
 export { ConfirmDialogHost } from './ConfirmDialogHost';

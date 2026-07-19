@@ -3,7 +3,7 @@
 **Status:** accepted  
 **Date:** 2026-07-18
 
-Create/edit todos open in a **modal form sheet**, not a full stack push and not inline expand. **Every** delete (single todo, multi-select delete, batch delete-completed, admin deletes) requires an explicit confirmation dialog before the mutation.
+Create/edit todos open in a **modal form sheet**, not a full stack push and not inline expand. **Every** delete (single todo, admin deletes) requires an explicit confirmation dialog before the mutation.
 
 **Why:** Form sheet fits dense fields without leaving list context. Confirm-all-deletes was chosen over confirm-bulk-only for safety consistency (heavier UX; accepted trade-off).
 

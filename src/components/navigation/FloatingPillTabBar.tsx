@@ -109,21 +109,17 @@ function PillGlassMaterial({
     );
   }
 
-  // Light only: soft glass over white fill
+  // Light: solid fill + iOS native blur only.
+  // Android BlurView.dimezis* butuh blurTarget (API baru) — skip agar no warn/fallback.
   return (
     <>
       <View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, { backgroundColor: fillColor }]}
       />
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 40 : 60}
-        tint="light"
-        experimentalBlurMethod={
-          Platform.OS === 'android' ? 'dimezisBlurView' : undefined
-        }
-        style={StyleSheet.absoluteFill}
-      />
+      {Platform.OS === 'ios' ? (
+        <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} />
+      ) : null}
       <View
         pointerEvents="none"
         style={[

@@ -204,7 +204,7 @@ export function ConfirmDialogHost() {
             accessibilityViewIsModal
           >
             {(() => {
-              // Icon menyesuaikan aksi: hapus vs konfirmasi lain (role, batch)
+              // Icon menyesuaikan aksi: hapus vs konfirmasi lain (role, dll.)
               const isDelete = /hapus|delete/i.test(
                 `${display.confirmLabel} ${display.title}`
               );

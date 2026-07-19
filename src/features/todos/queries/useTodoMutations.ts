@@ -1,5 +1,5 @@
 /**
- * Mutations todos: create, update, toggle, delete, batch.
+ * Mutations todos: create, update, toggle, delete.
  * Toggle + delete: optimistic update infinite cache.
  */
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -10,12 +10,7 @@ import {
   type InfiniteData,
 } from '@tanstack/react-query';
 import { todosApi } from '../api/todos.api';
-import type {
-  BatchTodoAction,
-  CreateTodoBody,
-  TodoListResult,
-  UpdateTodoBody,
-} from '../types';
+import type { CreateTodoBody, TodoListResult, UpdateTodoBody } from '../types';
 import { todoKeys } from './keys';
 
 type InfiniteTodos = InfiniteData<TodoListResult, number>;
@@ -120,28 +115,6 @@ export function useDeleteTodo() {
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: todoKeys.all });
-    },
-  });
-}
-
-export function useBatchTodos() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (action: BatchTodoAction) => todosApi.batch(action),
-    onSuccess: (affected, action) => {
-      void qc.invalidateQueries({ queryKey: todoKeys.all });
-      toast.success({
-        message:
-          action === 'complete-all'
-            ? `${affected} todo ditandai selesai`
-            : `${affected} todo selesai dihapus`,
-      });
-    },
-    onError: (e) => {
-      toast.error({
-        title: 'Batch gagal',
-        message: getApiErrorMessage(e),
-      });
     },
   });
 }

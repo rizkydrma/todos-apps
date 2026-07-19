@@ -4,8 +4,6 @@
  */
 import apiClient from '@/api/client';
 import type {
-  BatchResultResponse,
-  BatchTodoAction,
   CreateTodoBody,
   DeletedResponse,
   Todo,
@@ -70,19 +68,5 @@ export const todosApi = {
     if (!data?.success || !data.data?.deleted) {
       throw new Error('Invalid delete todo response');
     }
-  },
-
-  /** PATCH /todos/batch */
-  batch: async (action: BatchTodoAction): Promise<number> => {
-    const { data } = await apiClient.patch<BatchResultResponse>(
-      '/todos/batch',
-      {
-        action,
-      }
-    );
-    if (!data?.success || typeof data.data?.affected !== 'number') {
-      throw new Error('Invalid batch todo response');
-    }
-    return data.data.affected;
   },
 };

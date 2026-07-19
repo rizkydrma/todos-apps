@@ -263,7 +263,8 @@ export function PageHeaderChrome({
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, materialOpacityStyle]}
       >
-        {Platform.OS !== 'web' ? (
+        {/* iOS only — Android dimezis blur butuh blurTarget (hindari warn API baru) */}
+        {Platform.OS === 'ios' ? (
           <BlurView
             intensity={isDarkMode ? 40 : 55}
             tint={isDarkMode ? 'dark' : 'light'}

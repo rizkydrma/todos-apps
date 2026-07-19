@@ -5,9 +5,20 @@
  * Google idToken → Firebase credential → Firebase ID token → dikirim ke backend /auth/google.
  *
  * Config ini harus cocok dengan project Firebase di google-services.json.
+ *
+ * Di React Native, Auth di-init dengan AsyncStorage persistence agar state
+ * tidak hilang antar session dan warning "without providing AsyncStorage" hilang.
+ * Session app sendiri tetap lewat SecureStore (`auth-session`); ini hanya persistence Firebase Auth.
  */
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import {
+  getAuth,
+  getReactNativePersistence,
+  initializeAuth,
+  type Auth,
+} from 'firebase/auth';
+import { Platform } from 'react-native';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyCNPYj2caDjuElaADRRq9rbyFmlPoK4WJ8',
@@ -20,5 +31,25 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+/**
+ * Buat instance Auth sekali.
+ * - Web: getAuth (browser persistence bawaan)
+ * - Native: initializeAuth + AsyncStorage; fallback getAuth jika sudah di-init (hot reload)
+ */
+function createAuth(): Auth {
+  if (Platform.OS === 'web') {
+    return getAuth(app);
+  }
+
+  try {
+    return initializeAuth(app, {
+      persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+    });
+  } catch {
+    // Auth sudah diinisialisasi (Fast Refresh / double import) — reuse instance yang ada.
+    return getAuth(app);
+  }
+}
+
 /** Instance Firebase Auth — dipakai signInWithCredential di useGoogleSignIn. */
-export const auth = getAuth(app);
+export const auth = createAuth();

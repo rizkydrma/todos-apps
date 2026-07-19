@@ -5,6 +5,7 @@
  */
 import {
   AppText,
+  Badge,
   Button,
   PageHeader,
   PageHeaderBackButton,
@@ -23,7 +24,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -98,15 +99,8 @@ export default function TodoFormScreen() {
     row: {
       flexDirection: 'row' as const,
       flexWrap: 'wrap' as const,
-      gap: t.spacing.xs,
+      gap: t.spacing.xs + 2,
     },
-    chip: {
-      paddingHorizontal: t.spacing.sm,
-      paddingVertical: t.spacing.xs,
-      borderRadius: t.radius.full,
-      backgroundColor: t.colors.tertiarySystemFill,
-    },
-    chipOn: { backgroundColor: t.colors.primary },
     loading: {
       flex: 1,
       justifyContent: 'center' as const,
@@ -196,18 +190,13 @@ export default function TodoFormScreen() {
           </AppText>
           <View style={styles.row}>
             {(['low', 'medium', 'high'] as Priority[]).map((p) => (
-              <Pressable
+              <Badge
                 key={p}
+                label={p}
+                size="sm"
+                selected={priority === p}
                 onPress={() => setPriority(p)}
-                style={[styles.chip, priority === p && styles.chipOn]}
-              >
-                <AppText
-                  variant="caption"
-                  color={priority === p ? 'onPrimary' : 'label'}
-                >
-                  {p}
-                </AppText>
-              </Pressable>
+              />
             ))}
           </View>
         </View>
@@ -237,18 +226,13 @@ export default function TodoFormScreen() {
                         opt.days * 86400000
                     ) < 86400000;
               return (
-                <Pressable
+                <Badge
                   key={opt.label}
+                  label={opt.label}
+                  size="sm"
+                  selected={active}
                   onPress={() => setDueDaysFromNow(opt.days)}
-                  style={[styles.chip, active && styles.chipOn]}
-                >
-                  <AppText
-                    variant="caption"
-                    color={active ? 'onPrimary' : 'label'}
-                  >
-                    {opt.label}
-                  </AppText>
-                </Pressable>
+                />
               );
             })}
           </View>
@@ -268,30 +252,20 @@ export default function TodoFormScreen() {
             Kategori
           </AppText>
           <View style={styles.row}>
-            <Pressable
+            <Badge
+              label="Tidak ada"
+              size="sm"
+              selected={categoryId == null}
               onPress={() => setCategoryId(null)}
-              style={[styles.chip, categoryId == null && styles.chipOn]}
-            >
-              <AppText
-                variant="caption"
-                color={categoryId == null ? 'onPrimary' : 'label'}
-              >
-                Tidak ada
-              </AppText>
-            </Pressable>
+            />
             {categories.map((c) => (
-              <Pressable
+              <Badge
                 key={c.id}
+                label={c.name}
+                size="sm"
+                selected={categoryId === c.id}
                 onPress={() => setCategoryId(c.id)}
-                style={[styles.chip, categoryId === c.id && styles.chipOn]}
-              >
-                <AppText
-                  variant="caption"
-                  color={categoryId === c.id ? 'onPrimary' : 'label'}
-                >
-                  {c.name}
-                </AppText>
-              </Pressable>
+              />
             ))}
           </View>
         </View>
@@ -308,8 +282,11 @@ export default function TodoFormScreen() {
             {tags.map((t) => {
               const on = tagIds.includes(t.id);
               return (
-                <Pressable
+                <Badge
                   key={t.id}
+                  label={t.name}
+                  size="sm"
+                  selected={on}
                   onPress={() => {
                     setTagIds((prev) =>
                       on
@@ -319,12 +296,7 @@ export default function TodoFormScreen() {
                           : [...prev, t.id]
                     );
                   }}
-                  style={[styles.chip, on && styles.chipOn]}
-                >
-                  <AppText variant="caption" color={on ? 'onPrimary' : 'label'}>
-                    {t.name}
-                  </AppText>
-                </Pressable>
+                />
               );
             })}
           </View>

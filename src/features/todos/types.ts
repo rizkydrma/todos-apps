@@ -69,8 +69,6 @@ export type UpdateTodoBody = {
   tagIds?: string[];
 };
 
-export type BatchTodoAction = 'complete-all' | 'delete-completed';
-
 export type TodoListResult = {
   items: TodoWithRelations[];
   meta: PaginationMeta;
@@ -92,12 +90,6 @@ export type TodoDetailResponse = {
 export type TodoMutationResponse = {
   success: true;
   data: Todo;
-  requestId: string;
-};
-
-export type BatchResultResponse = {
-  success: true;
-  data: { affected: number };
   requestId: string;
 };
 
