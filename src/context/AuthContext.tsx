@@ -34,6 +34,12 @@ import {
 /** Status auth app: loading awal | sudah login | belum login. */
 type AuthStatus = 'bootstrapping' | 'authenticated' | 'unauthenticated';
 
+/**
+ * Bootstrap Timeout (CONTEXT / ADR-0011): cap Auth Bootstrap.
+ * Lewat ini → unauthenticated supaya Cold Start Hold bisa lepas di Login.
+ */
+const BOOTSTRAP_TIMEOUT_MS = 15_000;
+
 type AuthContextValue = {
   user: PublicUser | null;
   status: AuthStatus;
@@ -82,49 +88,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * Bootstrap: hydrate SecureStore → kalau ada refresh token, tukar ke session valid.
    * Flag `cancelled` mencegah setState setelah unmount.
-   * Satu kali set status di akhir — hindari flash bootstrapping→auth→bootstrapping.
+   * Timeout 15s → unauthenticated (jangan stuck di splash selamanya).
    */
   useEffect(() => {
     let cancelled = false;
+    let settled = false;
+
+    const finish = (next: AuthStatus, nextUser: PublicUser | null) => {
+      if (cancelled || settled) return;
+      settled = true;
+      setUser(nextUser);
+      setStatus(next);
+    };
+
+    const timeoutId = setTimeout(() => {
+      // Bootstrap Timeout: fail-open ke login, jangan hang di Cold Start Hold.
+      if (cancelled || settled) return;
+      void clearSession().finally(() => {
+        finish('unauthenticated', null);
+      });
+    }, BOOTSTRAP_TIMEOUT_MS);
 
     (async () => {
       try {
         const stored = await hydrateSessionFromStorage();
-        if (cancelled) return;
+        if (cancelled || settled) return;
 
         // Tidak ada refresh token → user belum pernah login (atau sudah logout).
-        // clearSession tanpa “mengandalkan” subscriber untuk tutup bootstrapping.
         if (!stored.refreshToken) {
           await clearSession();
-          if (!cancelled) {
-            setUser(null);
-            setStatus('unauthenticated');
-          }
+          finish('unauthenticated', null);
           return;
         }
 
         // Validasi/rotate token lewat backend
         const session = await authApi.refresh(stored.refreshToken);
-        if (cancelled) return;
-        // persistSession → notify(user). Subscriber sengaja TIDAK mengubah
-        // status saat bootstrapping; kita set authenticated di sini sekali.
+        if (cancelled || settled) return;
+        // persistSession → notify(user). Subscriber tidak menutup bootstrapping.
         await persistSession(session);
-        if (!cancelled) {
-          setUser(session.user);
-          setStatus('authenticated');
-        }
+        finish('authenticated', session.user);
       } catch {
         // Token invalid/expired → bersihkan, minta login lagi
         await clearSession();
-        if (!cancelled) {
-          setUser(null);
-          setStatus('unauthenticated');
-        }
+        finish('unauthenticated', null);
       }
     })();
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
   }, []);
 

@@ -98,6 +98,24 @@ _Avoid_: No animation, disable all feedback
 A short haptic fired only on meaningful commits (e.g. todo complete, destructive action), not on every press or keystroke.
 _Avoid_: Haptic on every tap, decorative vibration
 
+### Cold start (session gate)
+
+**Cold Start Hold**:
+The single branded native splash that remains visible from process start until the app has both a resolved session state and a **Cold Start Destination** on screen. No second JS layer that redraws the same splash art.
+_Avoid_: Double splash, BootstrapCover (as a second splash), splash flash
+
+**Cold Start Destination**:
+The only screens that may appear when the hold ends on a normal launch: **Login** (unauthenticated) or **Home todos** (authenticated). Intermediate anchors (root `/` redirect) are not destinations.
+_Avoid_: Entry hop, index redirect (as a visible step), any-auth-route / any-main-route (v1 cold start is narrower)
+
+**Auth Bootstrap**:
+The phase while session is still unknown (`bootstrapping`): SecureStore hydrate and optional refresh. Ends in authenticated, unauthenticated, or timeout-as-unauthenticated.
+_Avoid_: Loading (alone), isLoading (when meaning this phase)
+
+**Bootstrap Timeout**:
+A hard cap on Auth Bootstrap (15s). On expiry the session is treated as unauthenticated so the hold can end at Login instead of hanging forever.
+_Avoid_: Infinite splash wait
+
 ## Brand decisions (resolved in grilling)
 
 These are product decisions captured for implementers; prefer ADRs for hard-to-reverse choices.
@@ -125,3 +143,11 @@ These are product decisions captured for implementers; prefer ADRs for hard-to-r
 - List: infinite scroll
 - Deletes: confirm every time
 - Delivery: one vertical plan, phased milestones
+
+## Cold start (resolved in grilling)
+
+- Hold: **single native** branded splash until Auth Bootstrap + Cold Start Destination
+- Destinations: **Login** or **Home todos** only (v1)
+- No JS second paint of splash art; no visible `/` redirect hop
+- Bootstrap timeout: **15s** → unauthenticated → Login
+- ADR: `docs/adr/0011-cold-start-single-native-hold.md`
