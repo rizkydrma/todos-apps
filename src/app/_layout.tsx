@@ -4,13 +4,14 @@
  * Urutan provider (luar → dalam):
  * QueryProvider → SafeArea → Theme → Auth → NavigationLayout
  *
- * Auth routing (Expo Router 57 idiomatic):
- * 1. status === bootstrapping → spinner (jangan putuskan guard dulu; cegah flash)
+ * Auth routing (Expo Router 57):
+ * 1. status === bootstrapping → return null (native splash masih di-hold)
  * 2. Stack.Protected guard={authenticated} → (main) + index
  * 3. Stack.Protected guard={!authenticated} → login + register
  *
+ * Splash: preventAutoHide di module scope, hide sekali saat auth siap.
  * Docs: https://docs.expo.dev/router/advanced/authentication/
- *       https://docs.expo.dev/router/advanced/protected/
+ *       https://docs.expo.dev/versions/v57.0.0/sdk/splash-screen/
  */
 import { ThemeInkOverlay } from '@/components/theme/ThemeInkOverlay';
 import { ConfirmDialogHost, ToastHost } from '@/components/ui';
@@ -18,8 +19,13 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { Stack } from 'expo-router';
-import { ActivityIndicator, StatusBar, View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import { StatusBar, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// Global scope — jangan di useEffect (bisa terlambat setelah auto-hide).
+SplashScreen.preventAutoHideAsync();
 
 /**
  * Stack navigator: theme chrome + protected route groups.
@@ -29,29 +35,20 @@ function NavigationLayout() {
   const { theme, statusBarIsDark } = useAppTheme();
   const { status, isAuthenticated } = useAuth();
 
-  // Tunggu hydrate SecureStore + refresh token — jangan evaluasi guard dulu
+  // Hide native splash sekali saat auth lepas bootstrapping.
+  useEffect(() => {
+    if (status !== 'bootstrapping') {
+      void SplashScreen.hideAsync();
+    }
+  }, [status]);
+
+  // Jangan render spinner — native splash masih visible. Spinner = "splash kedua".
   if (status === 'bootstrapping') {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: theme.colors.systemBackground,
-        }}
-      >
-        <StatusBar
-          barStyle={statusBarIsDark ? 'light-content' : 'dark-content'}
-          backgroundColor={theme.colors.systemBackground}
-        />
-        <ActivityIndicator />
-      </View>
-    );
+    return null;
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.systemBackground }}>
-      {/* Freeze style selama ink (frozenDark) — status bar tidak di screenshot */}
       <StatusBar
         barStyle={statusBarIsDark ? 'light-content' : 'dark-content'}
         backgroundColor={theme.colors.systemBackground}
@@ -66,13 +63,11 @@ function NavigationLayout() {
           contentStyle: { backgroundColor: theme.colors.systemBackground },
         }}
       >
-        {/* Area privat: hanya setelah login / session valid */}
         <Stack.Protected guard={isAuthenticated}>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(main)" options={{ headerShown: false }} />
         </Stack.Protected>
 
-        {/* Area publik auth: hanya saat belum login */}
         <Stack.Protected guard={!isAuthenticated}>
           <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
           <Stack.Screen
@@ -96,14 +91,10 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            {/* Wrapper flex-1 supaya absoluteFill ink/toast relative ke full screen */}
             <View style={{ flex: 1 }}>
               <NavigationLayout />
-              {/* Toast di atas stack; butuh Theme + SafeArea di parent */}
               <ToastHost />
-              {/* Confirm delete/dialog — imperative confirmDestructive */}
               <ConfirmDialogHost />
-              {/* Ink reveal canvas — full screen di atas konten saat animasi */}
               <ThemeInkOverlay />
             </View>
           </AuthProvider>

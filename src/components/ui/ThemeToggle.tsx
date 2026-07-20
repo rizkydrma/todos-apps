@@ -1,10 +1,11 @@
 /**
- * Toggle light/dark (session override) + ink reveal.
+ * Toggle light/dark (persisted override) + ink reveal.
  *
  * - variant "icon" (default): chip sun/moon
  * - variant "text": pill label + ikon
  * - Tap → measureInWindow → requestInkToggle (tetasan malam/siang)
  * - reduced-motion / ink busy → toggle instan
+ * - Preferensi disimpan AsyncStorage lewat ThemeContext (survive restart)
  */
 import { useAppTheme } from '@/context/ThemeContext';
 import { useReducedMotion } from '@/hooks/useReducedMotion';

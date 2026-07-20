@@ -1,18 +1,26 @@
 /**
- * Theme context: system light/dark default + session-only override (ADR-0004).
+ * Theme context: system light/dark default + persisted override.
  *
+ * - Default: OS color scheme (useColorScheme)
+ * - Toggle / ink flip: override light|dark, disimpan AsyncStorage
+ * - Restart: hydrate preferensi dulu (paralllel splash auth) agar tidak “reset”
  * - theme / isDarkMode / override / toggleTheme (instant)
- * - requestInkToggle({x,y}): ink reveal ala rs-4/labs ink-toggle
- *   (screenshot → flip theme di bawah → tetesan + gelombang dstOut)
+ * - requestInkToggle({x,y}): ink reveal (screenshot → flip → gelombang)
  * - statusBarIsDark: freeze style status bar selama ink animasi
  *
  * useThemedStyles / AppText / Button membaca theme lewat useAppTheme().
  */
+import {
+  clearThemePreference,
+  loadThemePreference,
+  saveThemePreference,
+} from '@/lib/theme-preference';
 import { darkTheme, lightTheme, type Theme } from '@/theme';
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -47,7 +55,7 @@ type ThemeContextType = {
   override: ThemeOverride;
   /** Flip tema instan (tanpa ink). */
   toggleTheme: () => void;
-  /** Set override eksplisit (dipakai overlay setelah screenshot ready). */
+  /** Set override eksplisit + persist (dipakai ink overlay setelah screenshot ready). */
   setSessionMode: (mode: 'light' | 'dark') => void;
   /**
    * Mulai ink reveal dari origin (window). No-op jika sudah animating.
@@ -65,13 +73,18 @@ type ThemeContextType = {
    * sebelum gelombang menutupi (system UI tidak ikut screenshot).
    */
   statusBarIsDark: boolean;
+  /**
+   * Kembalikan ke system appearance + hapus preferensi tersimpan.
+   * Belum diikat ke UI; siap untuk settings “Match system”.
+   */
+  clearOverride: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 /**
  * Provider tema — bungkus di root layout (di dalam SafeAreaProvider).
- * Default: OS color scheme. Toggle = override sesi sampai process death.
+ * Default: OS color scheme. Toggle = override yang di-persist ke AsyncStorage.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme(); // 'light' | 'dark' | null
@@ -79,20 +92,48 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [ink, setInk] = useState<ThemeInkState | null>(null);
   const inkLockRef = useRef(false);
 
+  // Hydrate preferensi tersimpan sekali saat mount (sebelum splash hide = auth bootstrap).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const saved = await loadThemePreference();
+      if (!cancelled && saved) {
+        setOverride(saved);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const resolvedMode: 'light' | 'dark' =
     override ?? (systemScheme === 'dark' ? 'dark' : 'light');
 
   const isDarkMode = resolvedMode === 'dark';
 
-  const toggleTheme = useCallback(() => {
-    setOverride((prev) => {
-      const current = prev ?? (systemScheme === 'dark' ? 'dark' : 'light');
-      return current === 'dark' ? 'light' : 'dark';
-    });
-  }, [systemScheme]);
-
-  const setSessionMode = useCallback((mode: 'light' | 'dark') => {
+  /**
+   * Terapkan override + persist. Satu jalur untuk toggle, ink, dan fallback.
+   */
+  const applyOverride = useCallback((mode: 'light' | 'dark') => {
     setOverride(mode);
+    void saveThemePreference(mode);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    const current = override ?? (systemScheme === 'dark' ? 'dark' : 'light');
+    applyOverride(current === 'dark' ? 'light' : 'dark');
+  }, [override, systemScheme, applyOverride]);
+
+  const setSessionMode = useCallback(
+    (mode: 'light' | 'dark') => {
+      applyOverride(mode);
+    },
+    [applyOverride]
+  );
+
+  const clearOverride = useCallback(() => {
+    setOverride(null);
+    void clearThemePreference();
   }, []);
 
   const endInkTransition = useCallback(() => {
@@ -129,11 +170,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         });
       } catch {
         inkLockRef.current = false;
-        // Fallback: flip tanpa liquid reveal
-        setOverride(nextDark ? 'dark' : 'light');
+        // Fallback: flip tanpa liquid reveal (tetap persist)
+        applyOverride(nextDark ? 'dark' : 'light');
       }
     },
-    [isDarkMode, toggleTheme]
+    [isDarkMode, toggleTheme, applyOverride]
   );
 
   const statusBarIsDark = ink?.frozenDark ?? isDarkMode;
@@ -150,6 +191,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       ink,
       endInkTransition,
       statusBarIsDark,
+      clearOverride,
     }),
     [
       isDarkMode,
@@ -160,6 +202,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       ink,
       endInkTransition,
       statusBarIsDark,
+      clearOverride,
     ]
   );
 

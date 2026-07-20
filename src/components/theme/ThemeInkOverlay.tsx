@@ -4,7 +4,7 @@
  * Alur:
  * 1. ThemeToggle captureScreen → ThemeContext.ink di-set
  * 2. Overlay decode screenshot (Skia useImage)
- * 3. Flip theme di bawah (setSessionMode)
+ * 3. Flip theme di bawah (setSessionMode → persist)
  * 4. Tetesan goo (metaball blur+ColorMatrix) jatuh, lalu gelombang dstOut
  *    menghapus screenshot → tema baru terlihat di "lubang" liquid
  * 5. Cleanup unmount overlay
