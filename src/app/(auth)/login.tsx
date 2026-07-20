@@ -2,6 +2,7 @@
  * Screen login: email/password + Google Sign-In (quiet Apple auth).
  *
  * - Zod + react-hook-form (mode onChange)
+ * - Brand mark: app icon + wordmark "Just Todos"
  * - Lucide leading icons; GoogleLogo resmi pada CTA Google
  * - AuthEntrance stagger mount micro-motion
  * - Setelah sukses: navigasi ke /(main)/(tabs)/todos
@@ -19,8 +20,11 @@ import { AppText } from '@/components/ui/AppText';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useEmailLogin } from '@/features/auth/hooks/useEmailLogin';
 import { useGoogleSignIn } from '@/features/auth/hooks/useGoogleSignIn';
-import { spacing } from '@/theme/tokens';
+import { radius, spacing } from '@/theme/tokens';
+/** App icon (checkmark mark) — asset launcher / splash yang sama. */
+import appIcon from '@/assets/images/icon.png';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Lock, Mail } from 'lucide-react-native';
 import { useRef } from 'react';
@@ -73,7 +77,16 @@ export default function LoginScreen() {
 
         <AuthEntrance delayMs={0}>
           <View style={styles.logoContainer}>
-            <AppText variant="title">Just Todos</AppText>
+            <Image
+              source={appIcon}
+              style={styles.logo}
+              contentFit="cover"
+              accessibilityLabel="Just Todos"
+              accessibilityRole="image"
+            />
+            <AppText variant="title" style={styles.wordmark}>
+              Just Todos
+            </AppText>
             <AppText
               variant="subtitle"
               color="secondaryLabel"
@@ -174,8 +187,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
+  /** Brand mark — rounded square, ikon app (hitam + check putih). */
+  logo: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.xl,
+    marginBottom: spacing.md,
+  },
+  wordmark: {
+    textAlign: 'center',
+  },
   subtitle: {
     marginTop: spacing.sm,
+    textAlign: 'center',
   },
   form: {
     width: '100%',
