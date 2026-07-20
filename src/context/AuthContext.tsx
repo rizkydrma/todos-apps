@@ -59,10 +59,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sinkronkan state React bila session di-clear/refresh dari tempat lain (mis. interceptor).
   // Saat user = null (logout / refresh gagal): buang seluruh React Query cache
   // supaya user berikutnya tidak melihat todos/categories user lama (keys tidak per-user).
+  //
+  // Catatan bootstrap: effect ini TIDAK boleh “mencuri” status dari bootstrapping
+  // lewat notify(null) di tengah hydrate — itu bikin splash hide terlalu cepat
+  // lalu status flip lagi (flash splash berulang). Bootstrap set status sendiri.
   useEffect(() => {
     return subscribeSession((next) => {
       setUser(next);
-      setStatus(next ? 'authenticated' : 'unauthenticated');
+      setStatus((prev) => {
+        // Biarkan bootstrap effect yang menutup bootstrapping (satu kali, terkontrol).
+        if (prev === 'bootstrapping') {
+          return prev;
+        }
+        return next ? 'authenticated' : 'unauthenticated';
+      });
       if (!next) {
         queryClient.clear();
       }
@@ -72,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * Bootstrap: hydrate SecureStore → kalau ada refresh token, tukar ke session valid.
    * Flag `cancelled` mencegah setState setelah unmount.
+   * Satu kali set status di akhir — hindari flash bootstrapping→auth→bootstrapping.
    */
   useEffect(() => {
     let cancelled = false;
@@ -81,7 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const stored = await hydrateSessionFromStorage();
         if (cancelled) return;
 
-        // Tidak ada refresh token → user belum pernah login (atau sudah logout)
+        // Tidak ada refresh token → user belum pernah login (atau sudah logout).
+        // clearSession tanpa “mengandalkan” subscriber untuk tutup bootstrapping.
         if (!stored.refreshToken) {
           await clearSession();
           if (!cancelled) {
@@ -94,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Validasi/rotate token lewat backend
         const session = await authApi.refresh(stored.refreshToken);
         if (cancelled) return;
+        // persistSession → notify(user). Subscriber sengaja TIDAK mengubah
+        // status saat bootstrapping; kita set authenticated di sini sekali.
         await persistSession(session);
         if (!cancelled) {
           setUser(session.user);
