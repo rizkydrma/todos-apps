@@ -4,94 +4,76 @@
  * Urutan provider (luar → dalam):
  * QueryProvider → SafeArea → Theme → Auth → NavigationLayout
  *
- * Cold Start Hold (ADR-0011):
- * - Satu native splash (preventAutoHideAsync di module scope).
- * - Hide SEKALI hanya jika status bukan bootstrapping DAN pathname
- *   sudah Cold Start Destination: /login atau /todos.
- * - Tanpa BootstrapCover / Image splash.png di JS (itu double splash).
- * - Tanpa root index Redirect hop — authenticated entry = (main) → tabs todos.
- * - Root hitam selama bootstrap + sampai hide (cegah flash putih).
+ * Auth routing (Expo Router 57 idiomatic):
+ * 1. status === bootstrapping → spinner (jangan putuskan guard dulu; cegah flash)
+ * 2. Stack.Protected guard={authenticated} → (main) + index
+ * 3. Stack.Protected guard={!authenticated} → login + register
  *
  * Docs: https://docs.expo.dev/router/advanced/authentication/
- *       https://docs.expo.dev/versions/v57.0.0/sdk/splash-screen/
+ *       https://docs.expo.dev/router/advanced/protected/
  */
 import { ThemeInkOverlay } from '@/components/theme/ThemeInkOverlay';
 import { ConfirmDialogHost, ToastHost } from '@/components/ui';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
-import { SplashScreen, Stack, usePathname } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { StatusBar, View } from 'react-native';
+import { Stack } from 'expo-router';
+import { ActivityIndicator, StatusBar, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// Global scope — jangan di useEffect (bisa terlambat setelah auto-hide).
-SplashScreen.preventAutoHideAsync();
-
 /**
- * Cold Start Destination (v1): Login atau Home todos.
- * Group (auth)/(main)/(tabs) biasanya tidak muncul di pathname.
- */
-function isColdStartDestination(pathname: string): boolean {
-  if (pathname === '/login' || pathname.endsWith('/login')) return true;
-  if (pathname === '/todos' || pathname.endsWith('/todos')) return true;
-  return false;
-}
-
-/**
- * Stack + theme chrome. Hold native splash sampai destination siap.
+ * Stack navigator: theme chrome + protected route groups.
+ * Harus di dalam ThemeProvider + AuthProvider.
  */
 function NavigationLayout() {
   const { theme, statusBarIsDark } = useAppTheme();
-  const { status } = useAuth();
-  const pathname = usePathname();
-  const didHideSplash = useRef(false);
+  const { status, isAuthenticated } = useAuth();
 
-  const authReady = status !== 'bootstrapping';
-  const atDestination = isColdStartDestination(pathname);
-  // Contract: status siap + sudah di login/todos — bukan cuma “bukan bootstrapping”.
-  const canReleaseHold = authReady && atDestination;
-
-  useEffect(() => {
-    if (!canReleaseHold || didHideSplash.current) return;
-
-    didHideSplash.current = true;
-    // Satu frame: biar screen destination sempat paint di bawah splash.
-    const frame = requestAnimationFrame(() => {
-      void SplashScreen.hideAsync();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [canReleaseHold]);
-
-  // Hitam sampai hold lepas — cegah systemBackground putih di sela native hide.
-  const surface = canReleaseHold ? theme.colors.systemBackground : '#000000';
-  const barDark = canReleaseHold ? statusBarIsDark : true;
+  // Tunggu hydrate SecureStore + refresh token — jangan evaluasi guard dulu
+  if (status === 'bootstrapping') {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: theme.colors.systemBackground,
+        }}
+      >
+        <StatusBar
+          barStyle={statusBarIsDark ? 'light-content' : 'dark-content'}
+          backgroundColor={theme.colors.systemBackground}
+        />
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: surface }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.systemBackground }}>
+      {/* Freeze style selama ink (frozenDark) — status bar tidak di screenshot */}
       <StatusBar
-        barStyle={barDark ? 'light-content' : 'dark-content'}
-        backgroundColor={surface}
+        barStyle={statusBarIsDark ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.colors.systemBackground}
       />
 
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: surface },
-          headerTintColor: canReleaseHold ? theme.colors.label : '#FFFFFF',
+          headerStyle: { backgroundColor: theme.colors.systemBackground },
+          headerTintColor: theme.colors.label,
           headerShadowVisible: false,
           headerTitleStyle: { fontWeight: '700' },
-          contentStyle: { backgroundColor: surface },
-          // Tanpa animasi push saat group Protected baru aktif di bawah splash
-          animation: canReleaseHold ? 'default' : 'none',
+          contentStyle: { backgroundColor: theme.colors.systemBackground },
         }}
       >
-        {/* Authenticated: langsung (main) — tanpa index Redirect hop */}
-        <Stack.Protected guard={status === 'authenticated'}>
+        {/* Area privat: hanya setelah login / session valid */}
+        <Stack.Protected guard={isAuthenticated}>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(main)" options={{ headerShown: false }} />
         </Stack.Protected>
 
-        {/* Unauthenticated: login dulu di list = default cold-start auth */}
-        <Stack.Protected guard={status === 'unauthenticated'}>
+        {/* Area publik auth: hanya saat belum login */}
+        <Stack.Protected guard={!isAuthenticated}>
           <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
           <Stack.Screen
             name="(auth)/register"
@@ -114,10 +96,14 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <View style={{ flex: 1, backgroundColor: '#000000' }}>
+            {/* Wrapper flex-1 supaya absoluteFill ink/toast relative ke full screen */}
+            <View style={{ flex: 1 }}>
               <NavigationLayout />
+              {/* Toast di atas stack; butuh Theme + SafeArea di parent */}
               <ToastHost />
+              {/* Confirm delete/dialog — imperative confirmDestructive */}
               <ConfirmDialogHost />
+              {/* Ink reveal canvas — full screen di atas konten saat animasi */}
               <ThemeInkOverlay />
             </View>
           </AuthProvider>

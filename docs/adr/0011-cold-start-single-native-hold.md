@@ -1,12 +1,10 @@
 # Cold start: single native splash hold until destination
 
-**Status:** accepted  
+**Status:** superseded (simplified 2026-07-20)  
 **Date:** 2026-07-20
 
-Cold start must show **one** branded native splash (Cold Start Hold) until Auth Bootstrap finishes **and** a Cold Start Destination is on screen (Login or Home todos). We reject a second JS layer that paints `splash.png` again, and we reject hiding the splash on auth status alone (that exposed white frames from empty stack / `/` redirect).
+Originally accepted a destination-gated native splash hold (auth bootstrap + pathname Login/todos, 15s timeout, no index hop). That over-scoped a simple branding request and caused flaky double-splash / white-flash behavior during iteration.
 
-**Why:** Users saw splash → white → splash → white → destination. Root causes were stacked visuals (native + JS cover), early hide before destination mount, and an authenticated hop via root `index` Redirect. Contract from grilling: one hold, destination-gated hide, no entry hop, 15s bootstrap timeout → unauthenticated → Login.
+**Current decision:** splash is **asset + config only** — `app.json` `expo-splash-screen` points at branded `assets/images/splash.png` with black background. OS auto-hides when JS is ready. Auth bootstrap stays the previous simple spinner path; no `preventAutoHideAsync` / JS splash cover / destination-gated hide.
 
-**Considered:** (A) native splash only, hide when JS ready; (B) native hold until auth status; (C) native hold until destination path — chose **C** with timeout fail-open to Login. Also considered dual native+JS cover “stitched” as one — rejected because it reintroduced double art and races.
-
-**Consequences:** Root authenticated entry must not rely on a visible `/` → todos Redirect; splash hide is keyed off pathname + status; Auth Bootstrap needs a 15s timeout; no `BootstrapCover` Image of splash art.
+**Why simplify:** User only needed non-Expo-default splash art. Complex hold logic is optional polish, not required for brand.

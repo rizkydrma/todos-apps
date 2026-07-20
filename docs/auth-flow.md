@@ -19,19 +19,19 @@ Terakhir diselaraskan dengan kode: **Juli 2026**.
 
 ## 1. Ringkasan 30 detik
 
-| Pertanyaan                       | Jawaban di app ini                                                                                                                                                                             |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Siapa buktikan identitas Google? | Native Google → **Firebase exchange** → Firebase ID token                                                                                                                                      |
-| Siapa bikin Auth Session?        | Backend (`/auth/login`, `/auth/verify-email`, `/auth/google`, `/auth/refresh`)                                                                                                                 |
-| Register langsung session?       | **Tidak** — navigate `/(auth)/verify-email` (no `commitSession`)                                                                                                                               |
-| Login unverified?                | Backend 403 `EMAIL_NOT_VERIFIED` → app buka verify-email                                                                                                                                       |
-| Body `/auth/google`?             | `{ idToken }` = **Firebase** JWT, bukan Google OAuth murni                                                                                                                                     |
-| Token untuk API?                 | Backend **Access Token** (Bearer) + **Refresh Token**                                                                                                                                          |
-| Session disimpan di mana?        | Memory (`auth-session`) + SecureStore                                                                                                                                                          |
-| Setelah login / verify sukses?   | `commitSession` → `router.replace('/(main)/home')`                                                                                                                                             |
-| Restart app?                     | Hydrate SecureStore → `POST /auth/refresh` jika ada refresh; **Cold Start Hold** (native splash) sampai status siap **dan** destination `/login` atau `/todos` (ADR-0011; timeout 15s → login) |
-| Email/password pakai Firebase?   | **Tidak** — hash di D1, session dari backend                                                                                                                                                   |
-| Firebase client untuk apa?       | **Wajib** di path Google (exchange). Bukan Bearer API                                                                                                                                          |
+| Pertanyaan                       | Jawaban di app ini                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| Siapa buktikan identitas Google? | Native Google → **Firebase exchange** → Firebase ID token                      |
+| Siapa bikin Auth Session?        | Backend (`/auth/login`, `/auth/verify-email`, `/auth/google`, `/auth/refresh`) |
+| Register langsung session?       | **Tidak** — navigate `/(auth)/verify-email` (no `commitSession`)               |
+| Login unverified?                | Backend 403 `EMAIL_NOT_VERIFIED` → app buka verify-email                       |
+| Body `/auth/google`?             | `{ idToken }` = **Firebase** JWT, bukan Google OAuth murni                     |
+| Token untuk API?                 | Backend **Access Token** (Bearer) + **Refresh Token**                          |
+| Session disimpan di mana?        | Memory (`auth-session`) + SecureStore                                          |
+| Setelah login / verify sukses?   | `commitSession` → `router.replace('/(main)/home')`                             |
+| Restart app?                     | Hydrate SecureStore → `POST /auth/refresh` jika ada refresh                    |
+| Email/password pakai Firebase?   | **Tidak** — hash di D1, session dari backend                                   |
+| Firebase client untuk apa?       | **Wajib** di path Google (exchange). Bukan Bearer API                          |
 
 Prinsip: **Identity proof ≠ Auth Session.**  
 Backend detail: [service/docs/auth.md](../../service/docs/auth.md).  
@@ -68,8 +68,8 @@ flowchart TB
     Login["(auth)/login"]
     Reg["(auth)/register"]
     Verify["(auth)/verify-email"]
-    Home["(main)/(tabs)/todos"]
-    Root["_layout Cold Start Hold"]
+    Home["(main)/home"]
+    Gate["index.tsx gate"]
   end
 
   subgraph Hooks["features/auth/hooks"]
@@ -298,11 +298,10 @@ App buka → AuthProvider status = bootstrapping
   → jika ada → POST /auth/refresh → persistSession → authenticated
   → gagal refresh → clearSession → unauthenticated
 
-Cold start (ADR-0011, `src/app/_layout.tsx`)
-  → bootstrapping → native splash hold (hitam di bawah)
-  → authenticated → (main) tabs default /todos; hide splash saat pathname destination
-  → unauthenticated → /(auth)/login; hide splash di /login
-  → timeout 15s → unauthenticated → login
+Path `/` (src/app/index.tsx)
+  → bootstrapping → spinner
+  → authenticated → /(main)/home
+  → unauthenticated → /(auth)/login
 ```
 
 ---
@@ -534,7 +533,8 @@ Persist: lihat §3.3 dan §5.2.
 ```text
 src/
 ├── app/
-│   ├── _layout.tsx              # AuthProvider + Stack + Cold Start Hold (no index hop)
+│   ├── _layout.tsx              # AuthProvider + Stack (incl. verify-email)
+│   ├── index.tsx                # Auth gate `/`
 │   ├── (auth)/login.tsx
 │   ├── (auth)/register.tsx
 │   ├── (auth)/verify-email.tsx  # OTP UI + resend cooldown
@@ -602,7 +602,7 @@ Endpoint backend harus ada dulu — lihat service docs.
 
 | Gejala                       | Cek                                                                             |
 | ---------------------------- | ------------------------------------------------------------------------------- |
-| Unmatched route di start     | Protected groups: `(main)` vs `(auth)/login`; no root `index` hop (ADR-0011)    |
+| Unmatched route di start     | `app/index.tsx` path `/`                                                        |
 | Stuck spinner                | Network `/auth/refresh` + SecureStore keys                                      |
 | Google `DEVELOPER_ERROR`     | [`google-sign-in.md`](./google-sign-in.md) SHA-1, webClientId type 3            |
 | `idToken` null               | `GoogleSignin.configure({ webClientId })`                                       |
