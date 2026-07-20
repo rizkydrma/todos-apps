@@ -5,19 +5,23 @@
  * QueryProvider → SafeArea → Theme → Auth → NavigationLayout
  *
  * Auth routing (Expo Router 57 idiomatic):
- * 1. status === bootstrapping → underlay hitam (native splash masih di atas)
- * 2. Stack.Protected guard={authenticated} → (main) + index
- * 3. Stack.Protected guard={!authenticated} → login + register
+ * - SELALU render <Stack> (jangan early-return tanpa navigator).
+ * - Stack.Protected guard={authenticated} → (main) + index
+ * - Stack.Protected guard={!authenticated} → login + register + verify
+ * - Splash native di-hold sampai status lepas bootstrapping (SplashScreenController)
  *
- * Splash (native):
- * - preventAutoHideAsync di module scope agar splash tetap tampil
- *   sampai AuthContext selesai hydrate SecureStore + refresh.
- * - hideAsync saat status !== bootstrapping → user langsung ke login/main,
- *   bukan spinner sebagai “ganti splash”.
+ * Kenapa tidak return null/spinner tanpa Stack?
+ * - useLinking (getInitialURL promise) bisa setState ke fiber navigator
+ *   yang belum mount → warning "Can't perform a React state update on a
+ *   component that hasn't mounted yet".
+ * - Docs: https://docs.expo.dev/router/advanced/authentication/
+ *
+ * Splash:
+ * - preventAutoHideAsync di module scope (bukan di useEffect).
+ * - hide() di SplashScreenController saat status !== bootstrapping.
  * - Setelah ganti asset/plugin di app.json: rebuild native (bukan hanya Metro).
  *
- * Docs: https://docs.expo.dev/router/advanced/authentication/
- *       https://docs.expo.dev/router/advanced/protected/
+ * Docs: https://docs.expo.dev/router/advanced/protected/
  *       https://docs.expo.dev/versions/v57.0.0/sdk/splash-screen/
  */
 import { ThemeInkOverlay } from '@/components/theme/ThemeInkOverlay';
@@ -27,7 +31,6 @@ import { ThemeProvider, useAppTheme } from '@/context/ThemeContext';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
 import { StatusBar, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -42,32 +45,29 @@ SplashScreen.setOptions({
 });
 
 /**
+ * Hide native splash begitu auth bootstrap selesai.
+ * Pola docs Expo: komponen kecil di dalam AuthProvider; hide saat !loading.
+ * Dipanggil di render (bukan useEffect) agar sinkron dengan frame pertama status siap.
+ */
+function SplashScreenController() {
+  const { status } = useAuth();
+
+  if (status !== 'bootstrapping') {
+    // Best-effort: jangan biarkan kegagalan hide memblokir tree
+    void SplashScreen.hideAsync().catch(() => {});
+  }
+
+  return null;
+}
+
+/**
  * Stack navigator: theme chrome + protected route groups.
  * Harus di dalam ThemeProvider + AuthProvider.
+ * Selalu mount <Stack> — splash native menutupi UI sampai bootstrap selesai.
  */
 function NavigationLayout() {
   const { theme, statusBarIsDark } = useAppTheme();
-  const { status, isAuthenticated } = useAuth();
-
-  // Sembunyikan splash native setelah session resolve (login atau main siap digambar).
-  // void: fire-and-forget; kegagalan hide tidak boleh memblokir navigasi.
-  useEffect(() => {
-    if (status === 'bootstrapping') return;
-
-    void SplashScreen.hideAsync().catch(() => {
-      // Best-effort: UI tetap lanjut lewat Stack; underlay hitam mencegah flash putih.
-    });
-  }, [status]);
-
-  // Native splash masih menutupi layer ini; hitam = aman jika hide race / dev client aneh.
-  // Jangan ActivityIndicator mencolok — itu yang diganti splash branded.
-  if (status === 'bootstrapping') {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      </View>
-    );
-  }
+  const { isAuthenticated } = useAuth();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.systemBackground }}>
@@ -92,7 +92,7 @@ function NavigationLayout() {
           <Stack.Screen name="(main)" options={{ headerShown: false }} />
         </Stack.Protected>
 
-        {/* Area publik auth: hanya saat belum login */}
+        {/* Area publik auth: hanya saat belum login (termasuk selama bootstrapping di bawah splash) */}
         <Stack.Protected guard={!isAuthenticated}>
           <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
           <Stack.Screen
@@ -118,6 +118,8 @@ export default function RootLayout() {
           <AuthProvider>
             {/* Wrapper flex-1 supaya absoluteFill ink/toast relative ke full screen */}
             <View style={{ flex: 1 }}>
+              {/* Harus di dalam AuthProvider — baca status bootstrap */}
+              <SplashScreenController />
               <NavigationLayout />
               {/* Toast di atas stack; butuh Theme + SafeArea di parent */}
               <ToastHost />
