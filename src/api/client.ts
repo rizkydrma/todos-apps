@@ -24,7 +24,7 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 
 /** Instance Axios tunggal — semua endpoint backend lewat sini. */
 export const apiClient = axios.create({
-  baseURL: 'https://todo-service.rizky-darmarazak.workers.dev',
+  baseURL: 'https://todos-service.rizkydarma.my.id',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
