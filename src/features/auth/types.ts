@@ -12,8 +12,22 @@ export type PublicUser = {
   firebaseUid: string | null;
   /** true jika email sudah diverifikasi (OTP atau Google verified). */
   emailVerified: boolean;
+  /**
+   * URL publik avatar di CDN (dari R2 avatar_key).
+   * null = belum set; backend tidak default dari Google.
+   */
+  avatarUrl: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+/**
+ * Body PATCH /auth/me — partial: name dan/atau avatarKey.
+ * avatarKey dari response upload; null = hapus avatar.
+ */
+export type UpdateMeBody = {
+  name?: string;
+  avatarKey?: string | null;
 };
 
 /** Session lengkap setelah login/verify/refresh: user + sepasang token. */

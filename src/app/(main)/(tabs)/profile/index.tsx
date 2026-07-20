@@ -1,5 +1,5 @@
 /**
- * Tab Profil: identitas, theme, logout, pintu admin Users.
+ * Tab Profil: identitas (avatar + name), theme, edit profile, logout, pintu admin.
  */
 import {
   AppText,
@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
 import { type Href, useRouter } from 'expo-router';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -59,28 +59,30 @@ export default function ProfileScreen() {
         trailing={<ThemeToggle variant="icon" />}
       />
       <View style={styles.content}>
-        <View style={styles.card}>
+        <Pressable
+          onPress={() => router.push('/(main)/profile-edit' as Href)}
+          accessibilityRole="button"
+          accessibilityLabel="Edit profil"
+          style={styles.card}
+        >
           <View style={styles.identity}>
-            <InitialsAvatar name={user?.name} email={user?.email} size={56} />
+            <InitialsAvatar
+              name={user?.name}
+              email={user?.email}
+              imageUri={user?.avatarUrl}
+              size={56}
+            />
             <View style={styles.identityText}>
               <AppText variant="headline">{user?.name ?? '—'}</AppText>
               <AppText variant="body" color="secondaryLabel">
                 {user?.email}
               </AppText>
-              <AppText variant="caption" color="secondaryLabel">
-                Role: {user?.role ?? 'user'}
+              <AppText variant="caption" color="systemBlue">
+                Ketuk untuk edit
               </AppText>
             </View>
           </View>
-        </View>
-
-        {user?.role === 'admin' ? (
-          <Button
-            title="Kelola users"
-            variant="tinted"
-            onPress={() => router.push('/(main)/users' as Href)}
-          />
-        ) : null}
+        </Pressable>
 
         <Button title="Keluar" variant="destructive" onPress={onSignOut} />
       </View>

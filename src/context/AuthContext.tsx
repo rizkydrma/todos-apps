@@ -18,6 +18,7 @@ import {
   hydrateSessionFromStorage,
   persistSession,
   subscribeSession,
+  updateCachedUser,
 } from '@/lib/auth-session';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useQueryClient } from '@tanstack/react-query';
@@ -40,6 +41,11 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   /** Simpan session dari login/register/Google ke storage + state. */
   commitSession: (session: AuthSession) => Promise<void>;
+  /**
+   * Update profil di cache session (setelah PATCH /auth/me).
+   * Tidak menyentuh access/refresh token.
+   */
+  updateUser: (user: PublicUser) => Promise<void>;
   /** Logout: best-effort API + clear local + Google. */
   signOut: () => Promise<void>;
 };
@@ -121,6 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('authenticated');
   }, []);
 
+  /** Setelah update profil (name/avatar) — sinkron SecureStore + state. */
+  const updateUser = useCallback(async (next: PublicUser) => {
+    await updateCachedUser(next);
+    setUser(next);
+  }, []);
+
   /**
    * Logout:
    * 1. Best-effort revoke refresh di server
@@ -152,9 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       isAuthenticated: status === 'authenticated',
       commitSession,
+      updateUser,
       signOut,
     }),
-    [user, status, commitSession, signOut]
+    [user, status, commitSession, updateUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

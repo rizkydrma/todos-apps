@@ -76,6 +76,16 @@ export async function persistSession(session: AuthSession): Promise<void> {
 }
 
 /**
+ * Update data user saja (tanpa ganti token) — mis. setelah PATCH /auth/me.
+ * Tetap notify listener agar AuthContext / UI re-render.
+ */
+export async function updateCachedUser(user: PublicUser): Promise<void> {
+  cachedUser = user;
+  await SecureStore.setItemAsync(KEYS.user, JSON.stringify(user));
+  notify(user);
+}
+
+/**
  * Hapus session dari memori + SecureStore (logout / refresh gagal).
  * Listener mendapat user = null.
  */

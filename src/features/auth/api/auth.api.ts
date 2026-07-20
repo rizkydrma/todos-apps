@@ -18,6 +18,7 @@ import type {
   RegisterPendingResponse,
   RegisterPendingVerification,
   ResendVerificationBody,
+  UpdateMeBody,
   VerifyEmailBody,
 } from '../types';
 
@@ -116,6 +117,21 @@ export const authApi = {
     const { data } = await apiClient.get<PublicUserResponse>('/auth/me');
     if (!data?.success || !data.data) {
       throw new Error('Invalid /auth/me response');
+    }
+    return data.data;
+  },
+
+  /**
+   * Update profil sendiri: name dan/atau avatarKey (R2 key dari /uploads).
+   * avatarKey null = hapus avatar. Partial body — kirim field yang berubah saja.
+   */
+  updateMe: async (body: UpdateMeBody): Promise<PublicUser> => {
+    const { data } = await apiClient.patch<PublicUserResponse>(
+      '/auth/me',
+      body
+    );
+    if (!data?.success || !data.data) {
+      throw new Error('Invalid PATCH /auth/me response');
     }
     return data.data;
   },

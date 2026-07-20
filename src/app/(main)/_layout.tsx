@@ -1,5 +1,5 @@
 /**
- * Stack privat (main): tabs + users admin.
+ * Stack privat (main): tabs + users admin + edit profile.
  * Create/edit todo = floating SheetScaffold di screen (bukan stack modal).
  * Auth guard di root Stack.Protected.
  */
@@ -23,6 +23,13 @@ export default function MainLayout() {
         name="users"
         options={{
           title: 'Users',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="profile-edit"
+        options={{
+          title: 'Edit Profile',
           headerShown: true,
         }}
       />

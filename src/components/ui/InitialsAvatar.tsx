@@ -1,6 +1,5 @@
 /**
- * Avatar lingkaran dari inisial nama (atau email).
- * Siap diganti foto bila API menyediakan imageUri di masa depan.
+ * Avatar lingkaran: foto (imageUri / avatarUrl) atau inisial nama/email.
  */
 import { useAppTheme } from '@/context/ThemeContext';
 import { useThemedStyles } from '@/hooks/useThemedStyles';
@@ -17,7 +16,7 @@ export type InitialsAvatarProps = {
   /** Nama lengkap → 1–2 huruf. Fallback email / "?". */
   name?: string | null;
   email?: string | null;
-  /** URL foto opsional (belum ada di PublicUser). */
+  /** URL foto (mis. PublicUser.avatarUrl) atau file:// draft lokal. */
   imageUri?: string | null;
   /** Diameter px. Default 28 (cocok tab bar). */
   size?: number;
